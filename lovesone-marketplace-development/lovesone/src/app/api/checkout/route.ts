@@ -2,7 +2,7 @@ import { NextRequest,NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { auth } from "../../../../../auth";
+import { auth } from "../../../../auth";
 import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
