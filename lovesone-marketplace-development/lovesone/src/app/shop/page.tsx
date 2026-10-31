@@ -63,7 +63,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
       <section className="mt-9">
         <div className="flex flex-wrap items-center justify-between gap-3"><div><span className="eyebrow">Browse by need</span><h2 className="mt-2 text-2xl font-black">Find their favourites</h2></div><Link href="/shop" className="text-sm font-bold text-[#a45b2d]">View all products →</Link></div>
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{categories.map((category) => <Link key={category.slug} href={`/shop?category=${category.slug}`} aria-current={selectedCategory?.slug === category.slug ? "page" : undefined} className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md ${selectedCategory?.slug === category.slug ? "border-[#c46b3d] bg-[#fff0e3]" : "border-[#f0e9e1] bg-white"}`}><span className="text-2xl" aria-hidden="true">{category.icon}</span><span className="mt-2 block text-sm font-bold">{category.label}</span></Link>)}</div>
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{categories.map((category) => <a key={category.slug} href={`/shop?category=${category.slug}`} aria-current={selectedCategory?.slug === category.slug ? "page" : undefined} className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md ${selectedCategory?.slug === category.slug ? "border-[#c46b3d] bg-[#fff0e3]" : "border-[#f0e9e1] bg-white"}`}><span className="text-2xl" aria-hidden="true">{category.icon}</span><span className="mt-2 block text-sm font-bold">{category.label}</span></a>)}</div>
       </section>
 
       <section className="mt-10">
