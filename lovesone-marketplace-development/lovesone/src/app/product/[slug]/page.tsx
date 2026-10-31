@@ -15,7 +15,7 @@ const categoryDetails: Record<string, { label: string; icon: string }> = {
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   await connectDatabase();
-  const product = await Product.findOne({ slug, status: "active", deletedAt: null }).lean();
+  const product = await Product.findOne({ slug, status: "active", deletedAt: null }).lean() as { _id: unknown; slug: string; title: string; price: number; stock: number; description?: string; categorySlug: string; vendorId: unknown } | null;
   if (!product) notFound();
   const category = categoryDetails[product.categorySlug] ?? { label: product.categorySlug, icon: "🐾" };
 
