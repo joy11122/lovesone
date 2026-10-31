@@ -7,7 +7,7 @@ import { Order } from "@/models/Order";
 export const metadata = { title: "My account" };
 
 export default async function CustomerAccountPage() {
-  const user = await requireRole(["customer"]);
+  const user = await requireRole(["customer"], "/account");
   await connectDatabase();
   const orders = await Order.find({ customerId: user.id }).sort({ createdAt: -1 }).limit(30).lean();
   const totalSpent = orders.filter(order => order.paymentStatus === "paid").reduce((sum, order) => sum + order.total, 0);
