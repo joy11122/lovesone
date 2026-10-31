@@ -18,4 +18,5 @@ const OrderSchema = new Schema({
   }
 }, { timestamps: true });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Existing Mongoose model schemas are intentionally dynamic.
 export const Order = (mongoose.models.Order as mongoose.Model<any>) || mongoose.model("Order", OrderSchema);
