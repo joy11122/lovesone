@@ -8,4 +8,5 @@ const UserSchema = new Schema({
   status: { type: String, enum: ["active", "suspended", "pending"], default: "active", index: true }
 }, { timestamps: true, strict: true });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Existing Mongoose model schemas are intentionally dynamic.
 export const User = (mongoose.models.User as mongoose.Model<any>) || mongoose.model("User", UserSchema);
