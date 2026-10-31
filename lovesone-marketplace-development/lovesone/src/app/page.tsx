@@ -59,11 +59,11 @@ export default function HomePage() {
           </div>
           <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => (
-              <Link href={`/shop?category=${category.slug}`} key={category.slug} className="block rounded-3xl border border-[#f0e5db] bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+              <a href={`/shop?category=${category.slug}`} key={category.slug} className="block rounded-3xl border border-[#f0e5db] bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
                 <span className="text-4xl" role="img" aria-label={category.name}>{category.mark}</span>
                 <h3 className="mt-5 text-xl font-black">{category.name}</h3>
                 <p className="mt-2 text-sm leading-6 text-[#777487]">{category.detail}</p>
-              </Link>
+              </a>
             ))}
           </div>
         </div>
