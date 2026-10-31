@@ -5,6 +5,7 @@ const OrderSchema = new Schema({
   customerId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   subOrders: { type: [Schema.Types.Mixed], default: [] },
   total: { type: Number, required: true, min: 0 },
+  shipping: { name: { type: String, required: true }, phone: { type: String, required: true }, address: { type: String, required: true }, city: { type: String, required: true } },
   status: { type: String, default: "pending", index: true },
   paymentMethod: { type: String, default: "cod" },
   paymentStatus: { type: String, default: "pending", index: true },
