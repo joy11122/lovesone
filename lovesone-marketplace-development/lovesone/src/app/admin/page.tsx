@@ -1,0 +1,37 @@
+import { requireRole } from "@/lib/authz";
+import { connectDatabase } from "@/lib/db";
+import { Product } from "@/models/Product";
+import { User } from "@/models/User";
+import { VendorProfile } from "@/models/VendorProfile";
+import { Order } from "@/models/Order";
+import { ReviewAction, VendorApprovalAction } from "@/components/dashboard/admin-actions";
+import { ReturnReview } from "@/components/dashboard/return-review";
+
+export const metadata = { title: "Marketplace administration" };
+
+export default async function AdminPage() {
+  await requireRole(["admin", "super-admin"]);
+  await connectDatabase();
+  const [customers, vendors, pendingVendors, products, pendingProducts, orders, revenue, vendorQueue, productQueue, recentOrders, returnQueue] = await Promise.all([
+    User.countDocuments({ role: "customer" }),
+    User.countDocuments({ role: "vendor" }),
+    VendorProfile.countDocuments({ verificationStatus: "pending" }),
+    Product.countDocuments({ deletedAt: null }),
+    Product.countDocuments({ status: "pending-review", deletedAt: null }),
+    Order.countDocuments(),
+    Order.aggregate([{ $match: { paymentStatus: { $in: ["paid", "authorized"] } } }, { $group: { _id: null, total: { $sum: "$total" } } }]),
+    VendorProfile.find({ verificationStatus: { $in: ["pending", "under-review"] } }).sort({ createdAt: 1 }).limit(30).populate("userId", "name email").lean(),
+    Product.find({ status: "pending-review", deletedAt: null }).sort({ createdAt: 1 }).limit(40).populate("vendorId", "name email").lean(),
+    Order.find().select("orderNumber total status paymentStatus createdAt").sort({ createdAt: -1 }).limit(10).lean(),
+    Order.find({ "returnRequest.status": "requested" }).select("orderNumber total customerId returnRequest createdAt").sort({ "returnRequest.requestedAt": 1 }).limit(30).lean()
+  ]);
+  const metrics = [["Customers", customers], ["Verified vendors", vendors], ["Vendor applications", pendingVendors], ["Products", products], ["Awaiting moderation", pendingProducts], ["Orders", orders], ["Paid revenue", `৳${Number(revenue[0]?.total ?? 0).toLocaleString("en-BD")}`]] as const;
+  return <section className="container py-10">
+    <span className="eyebrow">Platform control center</span><h1 className="mt-4 text-4xl font-black">LOVESONE admin</h1><p className="mt-2 text-[#777487]">Marketplace health, seller onboarding, catalogue moderation and order oversight.</p>
+    <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{metrics.map(([label,value])=><div key={label} className="rounded-3xl border border-[#f0e9e1] bg-white p-6"><p className="text-sm text-[#777487]">{label}</p><p className="mt-2 text-3xl font-black">{value}</p></div>)}</div>
+    <div className="mt-10 grid gap-8 xl:grid-cols-2"><section><div className="mb-4 flex items-end justify-between"><div><h2 className="text-2xl font-black">Seller applications</h2><p className="mt-1 text-sm text-[#777487]">Verify business details before granting seller access.</p></div><span className="rounded-full bg-[#fff0e3] px-3 py-1 text-xs font-bold">{vendorQueue.length} pending</span></div><div className="space-y-3">{vendorQueue.length ? vendorQueue.map(vendor=>{const owner = vendor.userId as unknown as { name?: string; email?: string } | null; return <article key={String(vendor._id)} className="rounded-2xl border border-[#f0e9e1] bg-white p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-black">{vendor.storeName}</h3><p className="mt-1 text-sm text-[#777487]">{owner?.name || "Unknown applicant"} · {owner?.email || "No email"}</p><p className="mt-1 text-xs text-[#777487]">{vendor.phone} · {vendor.businessAddress}</p></div><span className="h-fit rounded-full bg-[#fff0e3] px-3 py-1 text-xs font-bold">{vendor.verificationStatus}</span></div><div className="mt-4"><VendorApprovalAction vendorId={String(vendor._id)} /></div></article>}):<div className="rounded-2xl border border-dashed border-[#e8ddd2] p-8 text-center text-sm text-[#777487]">No seller applications waiting.</div>}</div></section>
+    <section><div className="mb-4"><h2 className="text-2xl font-black">Product moderation</h2><p className="mt-1 text-sm text-[#777487]">Review listing details before products become publicly visible.</p></div><div className="space-y-3">{productQueue.length ? productQueue.map(product=>{const owner = product.vendorId as unknown as { name?: string; email?: string } | null; return <article key={String(product._id)} className="rounded-2xl border border-[#f0e9e1] bg-white p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-black">{product.title}</h3><p className="mt-1 text-sm text-[#777487]">{owner?.name || "Seller"} · SKU {product.sku}</p><p className="mt-1 text-sm">৳{product.price} · Stock {product.stock} · {product.categorySlug}</p>{product.medicine?.isMedicine && <p className="mt-2 text-xs font-bold text-[#a45b2d]">Medicine listing {product.medicine.requiresPrescription ? "· prescription required" : ""}</p>}</div><span className="h-fit rounded-full bg-[#fff0e3] px-3 py-1 text-xs font-bold">Pending</span></div><div className="mt-4"><ReviewAction productId={String(product._id)} medicine={Boolean(product.medicine?.isMedicine)} /></div></article>}):<div className="rounded-2xl border border-dashed border-[#e8ddd2] p-8 text-center text-sm text-[#777487]">No products waiting for review.</div>}</div></section></div>
+    <section className="mt-10"><div className="mb-4"><h2 className="text-2xl font-black">Return requests</h2><p className="mt-1 text-sm text-[#777487]">Review delivered-order return requests against the published marketplace return policy. Refund execution must be handled through the configured payment provider or COD settlement process.</p></div><div className="grid gap-3 md:grid-cols-2">{returnQueue.map(order=><article key={String(order._id)} className="rounded-2xl border border-[#f0e9e1] bg-white p-5"><div className="flex justify-between gap-3"><strong>{order.orderNumber}</strong><span className="text-sm">৳{order.total.toLocaleString("en-BD")}</span></div><p className="mt-2 text-sm text-[#777487]">{order.returnRequest?.reason}</p><ReturnReview orderId={String(order._id)}/></article>)}{!returnQueue.length&&<p className="rounded-2xl border border-dashed border-[#e8ddd2] p-6 text-sm text-[#777487]">No return requests pending.</p>}</div></section>
+    <section className="mt-10"><div className="mb-4"><h2 className="text-2xl font-black">Recent orders</h2><p className="mt-1 text-sm text-[#777487]">Latest marketplace orders.</p></div><div className="overflow-x-auto rounded-3xl border border-[#f0e9e1] bg-white"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-[#fff8ef] text-[#777487]"><tr><th className="p-4">Order</th><th className="p-4">Date</th><th className="p-4">Total</th><th className="p-4">Payment</th><th className="p-4">Status</th></tr></thead><tbody>{recentOrders.map(order=><tr key={String(order._id)} className="border-t border-[#f5f0eb]"><td className="p-4 font-bold">{order.orderNumber}</td><td className="p-4">{order.createdAt.toLocaleDateString()}</td><td className="p-4">৳{order.total.toLocaleString("en-BD")}</td><td className="p-4 capitalize">{order.paymentStatus}</td><td className="p-4 capitalize">{order.status}</td></tr>)}</tbody></table>{!recentOrders.length && <p className="p-8 text-center text-sm text-[#777487]">No orders yet.</p>}</div></section>
+  </section>;
+}
