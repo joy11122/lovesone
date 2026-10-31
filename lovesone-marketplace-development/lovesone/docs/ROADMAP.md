@@ -1,90 +1,93 @@
 # LOVESONE delivery roadmap
 
+This document reflects the current repository implementation. A feature is marked complete only when corresponding code exists; external credentials and certification are tracked separately.
+
 ## Phase 1 — Foundation
 - [x] Brand system, responsive storefront shell and landing page
-- [x] Project config, environment template and base docs
-- [x] Core data models, MongoDB connection and Zod validation foundations
-- [x] Auth.js Google/Credentials providers and role-aware session mapping (credentials still require secrets/configuration)
-- [ ] Verify MongoDB replica-set transactions against a provisioned Atlas environment
+- [x] Next.js project configuration and base documentation
+- [x] Core user, vendor, product and order models
+- [x] MongoDB connection helper
+- [x] Auth.js credentials and Google OAuth foundations
+- [x] Role-aware session mapping and active-account revalidation
+- [ ] Verify MongoDB replica-set transactions against a provisioned staging Atlas cluster
+- [ ] Automated backup and restore verification
 
 ## Phase 2 — Storefront
-- [x] Starter category and product presentation
-- [x] Public active-product API with search, pet/category filters, sorting and pagination
-- [ ] Product detail pages, variants, image gallery and stock display
-- [ ] Persistent cart and wishlist
-- [ ] Complete responsive customer checkout and address book
+- [x] Homepage category discovery and category-filtered shop links
+- [x] Active product catalogue and category filtering
+- [x] Product detail route, price, description and stock display
+- [x] Browser-persisted cart and quantity controls
+- [ ] Product search, sorting and pagination controls
+- [ ] Product images, gallery, signed upload and product variants
+- [ ] Wishlist and account-synchronised cart
+- [ ] Customer address book and delivery fee calculation
+- [ ] Bengali localization and complete SEO / accessibility audit
 
 ## Phase 3 — Vendors
-- [x] Vendor application and profile persistence
-- [x] Vendor-scoped dashboard with inventory overview, low-stock/pending-review metrics and net-sales summary
-- [x] Vendor product submission, price/stock editing and archive actions
-- [x] Vendor order list and guarded fulfillment transitions
-- [ ] KYC document uploads and manual verification evidence storage
-- [ ] Product image upload/storage and complete listing editor
-- [ ] Vendor shipping labels, cancellation handling and returns
+- [x] Seller application and vendor profile persistence
+- [x] Admin approval with transactional account-role update
+- [x] Vendor-scoped product submission
+- [x] Admin product moderation queue
+- [ ] Vendor product editing, inventory updates and archive actions
+- [ ] Vendor order list, fulfillment and cancellation transitions
+- [ ] KYC document uploads and verification evidence storage
+- [ ] Vendor shipping labels, returns and payout dashboard
 
-## Phase 4 — Checkout
-- [x] Order and vendor suborder schema
-- [x] Transactional multi-vendor order creation with stock decrement and idempotency key
-- [x] Customer order-history dashboard
-- [x] COD order API foundation
-- [ ] Address book, delivery pricing and shipping integrations
-- [x] bKash/Nagad/SSLCommerz server-side payment adapters and hosted checkout initiation (credentials required)
-- [ ] Provider sandbox certification and end-to-end transaction verification
-- [x] SSLCommerz IPN validation and bKash/Nagad server-side payment verification callbacks
-- [ ] Automated provider reconciliation, refunds and stale payment reservation expiry
-- [ ] Commission ledger, payout workflow and settlement statements
+## Phase 4 — Checkout and payments
+- [x] Parent order and vendor suborder creation
+- [x] Transactional COD checkout with server-authoritative prices and stock checks
+- [x] Customer-scoped checkout idempotency key and duplicate-submit protection
+- [x] Customer order history and delivered-order return request
+- [ ] bKash server-side payment initiation, execute/query verification and callback handling
+- [ ] Nagad server-side payment initiation and provider-side verification
+- [ ] SSLCommerz hosted checkout, IPN and validation API integration
+- [ ] Sandbox testing, provider certification and production callback configuration
+- [ ] Stale payment reservation expiry and provider reconciliation
+- [ ] Refunds, chargebacks, commission ledger and vendor settlements
+- [ ] Courier contracts, serviceability and rate tables
 
-## Phase 5 — Admin
-- [x] RBAC-protected admin console and platform metrics
-- [x] Vendor approval workflow with transactional role/profile update
-- [x] Product moderation queue, including medicine compliance-reference gate
-- [x] Recent order oversight
-- [ ] Vendor suspension/reinstatement, customer support and audit log explorer
-- [ ] Returns, disputes, refunds and configurable commission policies
-- [ ] Secure first-super-admin bootstrap and admin MFA
+## Phase 5 — Admin and operations
+- [x] RBAC-protected admin console and marketplace metrics
+- [x] Vendor approval workflow
+- [x] Product moderation, including medicine compliance-reference gate
+- [x] Recent order overview
+- [x] Return-request approval/rejection (decision only; no refund execution)
+- [ ] Vendor suspension/reinstatement and customer support tooling
+- [ ] Admin MFA, immutable audit log and security event review
+- [ ] Order status / fulfillment controls and refund operations
 
-## Phase 6 — Growth
+## Phase 6 — Account and customer experience
+- [x] Credentials registration and sign-in
+- [x] Google OAuth sign-in foundation with verified-email check
+- [ ] Email verification and transactional email templates
+- [ ] Password reset and account recovery
+- [ ] Account deletion, data export and session revocation
 - [ ] Reviews, coupons, notifications and loyalty
 - [ ] Pet profiles and tailored recommendations
-- [ ] Recurring orders/subscriptions after operational validation
-- [ ] Bengali localization
 
 ## Phase 7 — Launch readiness
-- [ ] Automated unit, integration and browser tests for all role workflows
-- [ ] Security review, distributed rate limiting and abuse controls
-- [ ] Accessibility, performance and SEO audit
+- [x] Unit test foundation and redirect-safety tests
+- [x] Playwright storefront/auth smoke tests
+- [x] CI typecheck, lint, unit, browser smoke and production build gates
+- [ ] Database integration tests for multi-vendor checkout and rollback
+- [ ] Two-vendor tenant-isolation and role-workflow tests
+- [ ] Security scans, distributed rate limiting and bot protection
+- [ ] Accessibility, performance and Core Web Vitals audit
 - [ ] Backups, monitoring, alerting and incident runbooks
 - [ ] Staging deployment and production smoke tests
 
-## External launch blockers
-- MongoDB Atlas URI and replica-set availability
+## External launch dependencies
+- MongoDB Atlas URI and replica-set transaction support
 - Google OAuth credentials and authorized callback URLs
-- Email provider/domain verification
-- Cloudinary (or equivalent) account and signed upload credentials
-- Bangladesh merchant accounts and approved payment gateway contracts
-- Delivery partner agreement and serviceability/fee data
+- Verified transactional email sender/domain
+- Cloudinary or equivalent object-storage account and signed upload credentials
+- bKash, Nagad and SSLCommerz merchant accounts, official API credentials, sandbox access and certification
+- Delivery partner agreement, coverage and serviceability/fee data
 - Legal review for medicines, prescription products, vendor identity, tax, returns and consumer disclosures
 
-## Delivery update — 2026-10-31
-- [x] Persistent browser cart with stock-bounded quantity controls
-- [x] Live marketplace product cards, product detail pages and search/filter UI
-- [x] Customer COD checkout UI wired to the transactional order API
-- [x] Customer return request submission for delivered orders
-- [x] Admin return-request review queue (approval/rejection only; no automatic refund)
-- [x] One-time, CLI-only super-admin bootstrap script (promotes an existing active account; refuses to overwrite an existing super-admin)
-
-## Remaining external / production launch dependencies
-- Payment adapters and checkout/callback routes are in code. Merchant credentials, provider-specific sandbox testing/certification, merchant-panel IPN configuration (SSLCommerz), live approval and production smoke tests are still required before enabling online payments in production.
-- Courier contracts, serviceability and rate tables are required before shipping fees and labels can be calculated.
-- Transactional email provider/domain, object-storage credentials, distributed rate-limit store and monitoring/alerting credentials are required for verified email, account recovery, image uploads, abuse protection and operational alerts.
-- Prescription medicine sales remain blocked until a licensed review and prescription-verification process has legal approval and is implemented.
-- Refund execution, vendor payouts, chargeback/dispute processing and accounting reconciliation require merchant/bank workflows; admin return approval is not a refund.
-- MongoDB Atlas must support replica-set transactions. Run the real integration suite against a provisioned staging database before launch.
-
-
-## Payment gateway implementation notes
-- Server adapters live in `src/services/payments/` and are called only from server routes. The checkout form never receives provider secrets.
-- Provider callbacks validate the transaction with the provider before changing `paymentStatus` to `paid`; SSLCommerz IPN also uses its validation API.
-- A pending online order has reserved stock. Unverified callback/network failures intentionally remain pending to avoid incorrectly releasing stock after a customer may have paid. Add provider reconciliation and expiry before production scale.
-- No sandbox certification, merchant credentials, production credentials or live payment tests have been completed.
+## Important operational boundaries
+- COD checkout is the only payment method currently implemented.
+- Product stock is decremented at COD order creation. Cancellation/restock operations need a complete audited order lifecycle before public launch.
+- Admin return approval records a decision only; it does not refund or settle money.
+- Prescription-controlled medicine listings remain blocked at checkout.
+- Do not enable online payments or claim production readiness until provider callbacks are verified against official provider APIs and staging transactions.

@@ -7,7 +7,7 @@ import { connectDatabase } from "@/lib/db";
 import { User } from "@/models/User";
 
 const credentialsSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email().max(254),
   password: z.string().min(8).max(128)
 });
 
@@ -28,31 +28,51 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     })
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "google" && user.email) {
+        // Google must assert that the mailbox is verified before it can be used
+        // to create or access a LOVESONE account.
+        if (profile?.email_verified !== true) return false;
         await connectDatabase();
         const email = user.email.toLowerCase();
-        const existing = await User.findOne({ email });
+        let existing = await User.findOne({ email });
         if (existing && existing.status !== "active") return false;
         if (!existing) {
-          await User.create({
-            name: user.name || "Pet parent",
-            email,
-            role: "customer",
-            status: "active"
-          });
+          try {
+            existing = await User.create({
+              name: user.name || "Pet parent",
+              email,
+              role: "customer",
+              status: "active"
+            });
+          } catch (error) {
+            // A simultaneous first sign-in may win the unique email index.
+            if (!(typeof error === "object" && error !== null && "code" in error && error.code === 11000)) throw error;
+            existing = await User.findOne({ email });
+            if (!existing || existing.status !== "active") return false;
+          }
         }
       }
       return true;
     },
     async jwt({ token, user }) {
-      if (token.email) {
+      const identityFilter = token.email
+        ? { email: token.email.toLowerCase() }
+        : token.sub
+          ? { _id: token.sub }
+          : null;
+
+      if (identityFilter) {
         await connectDatabase();
-        const record = await User.findOne({ email: token.email.toLowerCase(), status: "active" }).select("_id role");
+        const record = await User.findOne({ ...identityFilter, status: "active" }).select("_id role");
         if (record) {
-          // Always expose the application's MongoDB user ID, not Google's provider ID.
+          // Refresh role on every JWT check so role changes take effect promptly.
           token.sub = String(record._id);
           token.role = record.role;
+        } else {
+          // Invalidate stale sessions immediately after suspension/deletion.
+          token.sub = undefined;
+          token.role = undefined;
         }
       } else if (user?.id) {
         token.sub = user.id;
