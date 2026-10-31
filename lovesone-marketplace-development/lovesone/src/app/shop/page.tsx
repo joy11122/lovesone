@@ -4,6 +4,7 @@ import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 
 export const metadata = { title: "Shop pet essentials" };
+export const dynamic = "force-dynamic";
 const categories = [
   { slug: "food", label: "Food & nutrition", icon: "🥣" },
   { slug: "fashion", label: "Pet fashion", icon: "🧣" },
@@ -31,7 +32,18 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   try {
     await connectDatabase();
     const filter: Record<string, unknown> = { status: "active", deletedAt: null };
-    if (selectedCategory) filter.categorySlug = selectedCategory.slug;
+    if (selectedCategory) {
+      // Support current slugs and legacy records saved with category labels
+      // or the older "category" field, without exposing unpublished products.
+      const slugPattern = new RegExp("^" + selectedCategory.slug + "$", "i");
+      const labelPattern = new RegExp("^" + selectedCategory.label + "$", "i");
+      filter.$or = [
+        { categorySlug: slugPattern },
+        { categorySlug: labelPattern },
+        { category: slugPattern },
+        { category: labelPattern }
+      ];
+    }
     const fetchedProducts = await Product.find(filter).sort({ createdAt: -1 }).limit(60).lean();
     products = fetchedProducts as unknown as typeof products;
   } catch (error) {
