@@ -18,4 +18,5 @@ const ProductSchema = new Schema({
   }
 }, { timestamps: true });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Existing Mongoose model schemas are intentionally dynamic.
 export const Product = (mongoose.models.Product as mongoose.Model<any>) || mongoose.model("Product", ProductSchema);
