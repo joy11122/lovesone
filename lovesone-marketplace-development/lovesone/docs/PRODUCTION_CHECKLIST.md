@@ -8,7 +8,7 @@ The current application is a development marketplace foundation. Do not approve 
 - [ ] Configure Vercel production, preview environments, custom domain and rollback procedure.
 - [ ] Configure AUTH_SECRET and Google OAuth credentials with exact production callback URLs.
 - [ ] Configure a verified email sender/domain and transactional templates.
-- [ ] Configure object storage and signed upload credentials with file-type, size and ownership restrictions.
+- [ ] Configure Cloudinary credentials in encrypted deployment environment settings and verify production upload limits, retention and deletion policy.
 - [ ] Complete merchant onboarding, sandbox testing and certification for each payment provider.
 - [ ] Confirm courier coverage, delivery prices, COD settlement and reverse logistics.
 - [ ] Configure backups, retention, restore drills, monitoring and alerting.
@@ -22,7 +22,8 @@ The current application is a development marketplace foundation. Do not approve 
 - [x] Vendor application, admin approval and product moderation foundations.
 - [x] Customer order history and return-request workflow (decision only).
 - [ ] Implement email verification, password reset, account deletion and session revocation.
-- [ ] Add persistent account cart, wishlist, product variants and image gallery.
+- [x] Add vendor-owned single cover-image upload with server-side signing, file type/size validation and vendor-folder ownership.
+- [ ] Add multi-image gallery, product variants, wishlist and persistent account cart.
 - [ ] Implement vendor order fulfillment, inventory editing, cancellation and restock rules.
 - [ ] Implement bKash, Nagad and SSLCommerz server-side initiation, provider-side verification, callbacks/IPN and idempotent event handling.
 - [ ] Complete provider sandbox certification, production callback validation, automated reconciliation, stale payment reservation expiry, refunds and replay/concurrency tests.

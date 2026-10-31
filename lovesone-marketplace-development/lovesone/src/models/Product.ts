@@ -6,6 +6,8 @@ const ProductSchema = new Schema({
   slug: { type: String, required: true, unique: true, index: true },
   sku: { type: String, default: "" },
   description: { type: String, default: "" },
+  imageUrl: { type: String, default: "" },
+  imagePublicId: { type: String, default: "" },
   price: { type: Number, required: true, min: 0 },
   stock: { type: Number, default: 0, min: 0 },
   categorySlug: { type: String, default: "general" },

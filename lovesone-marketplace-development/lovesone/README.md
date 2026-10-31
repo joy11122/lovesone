@@ -54,6 +54,7 @@ Configure these server-side environment variables in .env.local and in the deplo
 - AUTH_SECRET
 - AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET (Google sign-in)
 - AUTH_URL / deployment URL configuration appropriate to the hosting environment
+- CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET (signed vendor product-image uploads)
 
 Do not commit secrets. The super-admin bootstrap script is a trusted local operation and must never be exposed as a public endpoint.
 
@@ -72,7 +73,7 @@ GitHub Actions runs typecheck, lint, unit tests, Playwright browser smoke tests 
 ## Known implementation and launch boundaries
 
 - Checkout currently supports **cash on delivery only**. bKash, Nagad and SSLCommerz adapters, initiation routes, callback/IPN verification and provider reconciliation are not present in the current source tree. Do not enable or advertise online payment until these are implemented and sandbox-certified.
-- Product image upload/gallery, product variants, wishlist and a persistent server-side cart are not implemented. Current product visuals are category illustrations.
+- Vendor-owned single product cover-image upload is implemented through a signed server-side Cloudinary upload route. Configure the three Cloudinary environment variables to enable it. Multi-image galleries, product variants, wishlist and a persistent server-side cart are not implemented.
 - Vendor order fulfillment, inventory editing, KYC document storage, payout ledger, settlement statements and commission accounting are not implemented.
 - Email verification, password reset, account deletion, session revocation, distributed rate limiting, audit-log retention and operational monitoring are not implemented.
 - Courier pricing, shipping labels, automated refunds, chargebacks and delivery partner integrations are not implemented.

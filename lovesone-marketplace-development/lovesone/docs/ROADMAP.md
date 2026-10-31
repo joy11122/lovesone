@@ -18,7 +18,8 @@ This document reflects the current repository implementation. A feature is marke
 - [x] Product detail route, price, description and stock display
 - [x] Browser-persisted cart and quantity controls
 - [ ] Product search, sorting and pagination controls
-- [ ] Product images, gallery, signed upload and product variants
+- [x] Vendor-owned single product cover-image upload via signed Cloudinary server route
+- [ ] Multi-image gallery and product variants
 - [ ] Wishlist and account-synchronised cart
 - [ ] Customer address book and delivery fee calculation
 - [ ] Bengali localization and complete SEO / accessibility audit
@@ -80,7 +81,7 @@ This document reflects the current repository implementation. A feature is marke
 - MongoDB Atlas URI and replica-set transaction support
 - Google OAuth credentials and authorized callback URLs
 - Verified transactional email sender/domain
-- Cloudinary or equivalent object-storage account and signed upload credentials
+- Cloudinary cloud name, API key and API secret for signed product-image uploads
 - bKash, Nagad and SSLCommerz merchant accounts, official API credentials, sandbox access and certification
 - Delivery partner agreement, coverage and serviceability/fee data
 - Legal review for medicines, prescription products, vendor identity, tax, returns and consumer disclosures

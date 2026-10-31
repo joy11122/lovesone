@@ -11,7 +11,9 @@ const schema = z.object({
   description: z.string().trim().max(4000).default(""),
   price: z.number().positive().max(10000000),
   stock: z.number().int().min(0).max(1000000),
-  categorySlug: z.enum(["food", "fashion", "medicine", "grooming", "toys", "beds", "accessories", "aquariums"])
+  categorySlug: z.enum(["food", "fashion", "medicine", "grooming", "toys", "beds", "accessories", "aquariums"]),
+  imageUrl: z.string().url().optional(),
+  imagePublicId: z.string().trim().min(1).max(255).optional()
 });
 
 export async function POST(request: NextRequest) {
@@ -25,6 +27,20 @@ export async function POST(request: NextRequest) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid product details.", issues: parsed.error.issues }, { status: 400 });
+    }
+
+    if (Boolean(parsed.data.imageUrl) !== Boolean(parsed.data.imagePublicId)) {
+      return NextResponse.json({ error: "Upload a product image using the seller dashboard." }, { status: 400 });
+    }
+    if (parsed.data.imageUrl && parsed.data.imagePublicId) {
+      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      const expectedFolder = `lovesone/vendors/${session.user.id}/products/`;
+      const image = new URL(parsed.data.imageUrl);
+      if (!cloudName || image.protocol !== "https:" || image.hostname !== "res.cloudinary.com" ||
+          !image.pathname.startsWith(`/${cloudName}/image/upload/`) ||
+          !parsed.data.imagePublicId.startsWith(expectedFolder)) {
+        return NextResponse.json({ error: "The product image is not a valid upload for this seller." }, { status: 400 });
+      }
     }
 
     await connectDatabase();
