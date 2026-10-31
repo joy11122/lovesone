@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { auth } from "../../../../../auth";
+import { auth } from "../../../../../../auth";
 import { connectDatabase } from "@/lib/db";
 import { Order } from "@/models/Order";
 
