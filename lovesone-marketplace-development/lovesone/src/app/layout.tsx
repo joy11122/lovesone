@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import { CartProvider, SiteHeader } from "@/components/storefront";
 
 export const metadata: Metadata = {
   title: { default: "LOVESONE — Pet Marketplace", template: "%s | LOVESONE" },
@@ -8,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><CartProvider><SiteHeader />{children}</CartProvider></body></html>;
 }
