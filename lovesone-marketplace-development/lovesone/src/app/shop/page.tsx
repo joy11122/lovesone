@@ -32,7 +32,8 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     await connectDatabase();
     const filter: Record<string, unknown> = { status: "active", deletedAt: null };
     if (selectedCategory) filter.categorySlug = selectedCategory.slug;
-    products = await Product.find(filter).sort({ createdAt: -1 }).limit(60).lean();
+    const fetchedProducts = await Product.find(filter).sort({ createdAt: -1 }).limit(60).lean();
+    products = fetchedProducts as unknown as typeof products;
   } catch (error) {
     catalogueUnavailable = true;
     console.error("Shop catalogue could not be loaded", error);
