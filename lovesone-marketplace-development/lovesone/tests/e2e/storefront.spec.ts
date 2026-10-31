@@ -28,3 +28,12 @@ test("navbar Shop link opens the shop route", async ({ page }) => {
   await expect(page).toHaveURL(/\/shop$/);
   await expect(page.getByRole("heading", { name: "Shop their happy place." })).toBeVisible();
 });
+
+ 
+test("home category cards open the matching filtered shop collection", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: /Food & nutrition/i }).click();
+  await expect(page).toHaveURL(/\/shop\?category=food$/);
+  await expect(page.getByRole("heading", { name: "Food & nutrition", exact: true })).toBeVisible();
+  await expect(page.locator('a[href="/shop?category=food"][aria-current="page"]')).toBeVisible();
+});
