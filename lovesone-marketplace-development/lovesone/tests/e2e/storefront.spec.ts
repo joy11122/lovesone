@@ -26,6 +26,5 @@ test("navbar Shop link opens the shop route", async ({ page }) => {
   await expect(shopLink).toBeVisible();
   await shopLink.click();
   await expect(page).toHaveURL(/\/shop$/);
-  console.log("SHOP_PAGE_BODY", await page.locator("body").innerText());
   await expect(page.getByRole("heading", { name: "Shop their happy place." })).toBeVisible();
 });

@@ -10,7 +10,11 @@ export async function connectDatabase(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI || process.env.MONGODB_URL;
   if (!uri) throw new Error("Missing MONGODB_URI environment variable");
   if (cached.conn) return cached.conn;
-  if (!cached.promise) cached.promise = mongoose.connect(uri, { bufferCommands: false });
+  if (!cached.promise) cached.promise = mongoose.connect(uri, {
+    bufferCommands: false,
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000
+  });
   try {
     cached.conn = await cached.promise;
     return cached.conn;
