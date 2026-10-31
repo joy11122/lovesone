@@ -19,3 +19,12 @@ test("login and registration pages render usable forms", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
   await expect(page.getByLabel("Your name")).toBeVisible();
 });
+
+test("navbar Shop link opens the shop route", async ({ page }) => {
+  await page.goto("/");
+  const shopLink = page.locator('header nav[aria-label="Main navigation"] a[href="/shop"]');
+  await expect(shopLink).toBeVisible();
+  await shopLink.click();
+  await expect(page).toHaveURL(/\/shop$/);
+  await expect(page.getByRole("heading", { name: "Shop their happy place." })).toBeVisible();
+});
