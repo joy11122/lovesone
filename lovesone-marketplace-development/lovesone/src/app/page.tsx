@@ -8,12 +8,14 @@ export const metadata: Metadata = {
 };
 
 const categories = [
-  { name: "Cats", detail: "Food, litter, toys and everyday care", mark: "🐈" },
-  { name: "Dogs", detail: "Nutrition, walks, play and grooming", mark: "🐕" },
-  { name: "Birds", detail: "Feeds, cages and enrichment", mark: "🦜" },
-  { name: "Fish", detail: "Aquarium care and essentials", mark: "🐠" },
-  { name: "Small pets", detail: "Gentle care for little companions", mark: "🐹" },
-  { name: "Pet parents", detail: "Helpful essentials for every home", mark: "🐾" },
+  { name: "Food & nutrition", slug: "food", detail: "Everyday meals, treats and healthy nutrition", mark: "🥣" },
+  { name: "Pet fashion", slug: "fashion", detail: "Comfortable outfits for little companions", mark: "🧣" },
+  { name: "Health & medicine", slug: "medicine", detail: "Care essentials for happier, healthier pets", mark: "🩺" },
+  { name: "Grooming", slug: "grooming", detail: "Bath time, brushes and coat care", mark: "🧼" },
+  { name: "Toys & play", slug: "toys", detail: "Enrichment, exercise and joyful play", mark: "🧸" },
+  { name: "Beds & furniture", slug: "beds", detail: "Cosy corners and comfy naps", mark: "🛏️" },
+  { name: "Accessories", slug: "accessories", detail: "Useful everyday pet-parent essentials", mark: "🐾" },
+  { name: "Aquarium supplies", slug: "aquariums", detail: "Everything for beautiful aquatic homes", mark: "🐠" },
 ];
 
 export default function HomePage() {
@@ -57,7 +59,7 @@ export default function HomePage() {
           </div>
           <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => (
-              <Link href="/shop" key={category.name} className="block rounded-3xl border border-[#f0e5db] bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+              <Link href={`/shop?category=${category.slug}`} key={category.slug} className="block rounded-3xl border border-[#f0e5db] bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
                 <span className="text-4xl" role="img" aria-label={category.name}>{category.mark}</span>
                 <h3 className="mt-5 text-xl font-black">{category.name}</h3>
                 <p className="mt-2 text-sm leading-6 text-[#777487]">{category.detail}</p>
@@ -76,13 +78,6 @@ export default function HomePage() {
         </p>
       </section>
 
-      <footer className="border-t border-[#f0e9e1]">
-        <div className="container flex flex-col gap-2 py-7 text-sm text-[#777487] sm:flex-row sm:items-center sm:justify-between">
-          <span className="font-black tracking-tight text-[#241d1a]">LOVESONE</span>
-          <span>Made with love for pets and the people who love them.</span>
-          <span>© {new Date().getFullYear()} LOVESONE</span>
-        </div>
-      </footer>
     </main>
   );
 }
