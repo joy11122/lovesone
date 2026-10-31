@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
     );
 
     if (!order) {
-      const existing = await Order.findOne({ _id: orderId, customerId: session.user.id }).select("status returnRequest.status").lean();
+      const existing = await Order.findOne({ _id: orderId, customerId: session.user.id }).select("status returnRequest.status").lean() as unknown as { status: string; returnRequest?: { status?: string | null } } | null;
       if (!existing) return NextResponse.json({ error: "Order not found." }, { status: 404 });
       if (existing.status !== "delivered") return NextResponse.json({ error: "Only delivered orders can be returned." }, { status: 409 });
       return NextResponse.json({ error: "A return request already exists for this order." }, { status: 409 });

@@ -51,21 +51,22 @@ export async function POST(request: NextRequest) {
     }
 
     await connectDatabase();
-    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id").lean();
+    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id").lean() as unknown as { _id: unknown } | null;
     if (previousOrder) {
       return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id) }, { status: 200 });
     }
 
-    dbSession = await mongoose.startSession();
+    const transactionSession = await mongoose.startSession();
+    dbSession = transactionSession;
     let createdOrderId = "";
 
-    await dbSession.withTransaction(async () => {
+    await transactionSession.withTransaction(async () => {
       const ids = [...quantities.keys()];
       const products = await Product.find({
         _id: { $in: ids },
         status: "active",
         deletedAt: null
-      }).session(dbSession);
+      }).session(transactionSession);
 
       if (products.length !== ids.length) throw new Error("PRODUCT_UNAVAILABLE");
 
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
         const changed = await Product.updateOne(
           { _id: product._id, status: "active", deletedAt: null, stock: { $gte: quantity } },
           { $inc: { stock: -quantity } },
-          { session: dbSession }
+          { session: transactionSession }
         );
         if (changed.modifiedCount !== 1) throw new Error("INSUFFICIENT_STOCK");
 
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
         grouped.set(vendorId, group);
       }
 
-      const [order] = await Order.create([{
+      const created = await Order.create([{
         orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
         customerId,
         idempotencyKey,
@@ -112,7 +113,8 @@ export async function POST(request: NextRequest) {
         paymentMethod: "cod",
         paymentStatus: "pending",
         status: "pending"
-      }], { session: dbSession });
+      }], { session: transactionSession });
+      const order = Array.isArray(created) ? created[0] : created;
 
       createdOrderId = String(order._id);
     });
@@ -120,7 +122,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Order placed successfully.", orderId: createdOrderId }, { status: 201 });
   } catch (error) {
     if (isDuplicateKeyError(error) && customerId && idempotencyKey) {
-      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id").lean().catch(() => null);
+      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id").lean().catch(() => null) as unknown as { _id: unknown } | null;
       if (existing) {
         return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id) }, { status: 200 });
       }
