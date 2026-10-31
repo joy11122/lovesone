@@ -19,14 +19,7 @@ const categories = [
 export default function HomePage() {
   return (
     <main className="min-h-screen overflow-hidden">
-      <header className="container flex items-center justify-between py-6">
-        <Link href="/" aria-label="LOVESONE home" className="text-2xl font-black tracking-tight">
-          LOVES<span className="text-[#c46b3d]">ONE</span>
-        </Link>
-        <a href="#categories" className="text-sm font-bold text-[#777487] transition hover:text-[#241d1a]">
-          Explore categories
-        </a>
-      </header>
+      
 
       <section className="container grid items-center gap-10 pb-16 pt-10 md:grid-cols-[1.05fr_.95fr] md:pb-24 md:pt-16">
         <div>
@@ -68,7 +61,7 @@ export default function HomePage() {
                 <span className="text-4xl" role="img" aria-label={category.name}>{category.mark}</span>
                 <h3 className="mt-5 text-xl font-black">{category.name}</h3>
                 <p className="mt-2 text-sm leading-6 text-[#777487]">{category.detail}</p>
-              </article>
+              </Link>
             ))}
           </div>
         </div>
