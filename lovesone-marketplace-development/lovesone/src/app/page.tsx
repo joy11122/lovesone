@@ -40,7 +40,7 @@ export default function HomePage() {
             Discover thoughtful essentials for the pets who make your house a home.
             LOVESONE is building a trusted place for pet parents across Bangladesh.
           </p>
-          <a href="#categories" className="btn mt-8">Explore pet categories <span aria-hidden="true" className="ml-2">→</span></a>
+          <Link href="/shop" className="btn mt-8">Explore pet categories <span aria-hidden="true" className="ml-2">→</span></Link>
           <p className="mt-4 text-xs text-[#96919a]">Made for every paw, fin, feather and little friend.</p>
         </div>
 
@@ -64,7 +64,7 @@ export default function HomePage() {
           </div>
           <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => (
-              <article key={category.name} className="rounded-3xl border border-[#f0e5db] bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+              <Link href="/shop" key={category.name} className="block rounded-3xl border border-[#f0e5db] bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
                 <span className="text-4xl" role="img" aria-label={category.name}>{category.mark}</span>
                 <h3 className="mt-5 text-xl font-black">{category.name}</h3>
                 <p className="mt-2 text-sm leading-6 text-[#777487]">{category.detail}</p>
