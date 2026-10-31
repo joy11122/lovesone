@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
     }
 
     await connectDatabase();
-    const product = await Product.findOne({ _id: productId, deletedAt: null }).select("medicine status").lean();
+    const product = await Product.findOne({ _id: productId, deletedAt: null }).select("medicine status").lean() as unknown as { status: string; medicine?: { isMedicine?: boolean } } | null;
     if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
     if (product.status !== "pending-review") {
       return NextResponse.json({ error: "This product has already been reviewed." }, { status: 409 });
