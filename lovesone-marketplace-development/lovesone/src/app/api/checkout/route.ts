@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { auth } from "../../../../auth";
 import { connectDatabase } from "@/lib/db";
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
   let dbSession: mongoose.ClientSession | undefined;
   let customerId = "";
   let idempotencyKey = "";
+  let requestFingerprint = "";
 
   try {
     const session = await auth();
@@ -50,9 +51,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Remove duplicate cart lines and try again." }, { status: 400 });
     }
 
+    const fingerprint = createHash("sha256").update(JSON.stringify({
+      items: [...quantities.entries()].map(([productId, quantity]) => ({ productId, quantity })).sort((a, b) => a.productId.localeCompare(b.productId)),
+      shipping: parsed.data.shipping
+    })).digest("hex");
+    requestFingerprint = fingerprint;
+
     await connectDatabase();
-    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id").lean() as unknown as { _id: unknown } | null;
+    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint").lean() as unknown as { _id: unknown; idempotencyFingerprint?: string } | null;
     if (previousOrder) {
+      if (previousOrder.idempotencyFingerprint !== fingerprint) {
+        return NextResponse.json({ error: "This checkout key was already used with different order details. Please retry checkout." }, { status: 409 });
+      }
       return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id) }, { status: 200 });
     }
 
@@ -107,6 +117,7 @@ export async function POST(request: NextRequest) {
         orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
         customerId,
         idempotencyKey,
+        idempotencyFingerprint: fingerprint,
         subOrders: [...grouped.values()].map((group) => ({ ...group, status: "pending" })),
         total: Math.round(total * 100) / 100,
         shipping: parsed.data.shipping,
@@ -122,8 +133,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Order placed successfully.", orderId: createdOrderId }, { status: 201 });
   } catch (error) {
     if (isDuplicateKeyError(error) && customerId && idempotencyKey) {
-      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id").lean().catch(() => null) as unknown as { _id: unknown } | null;
-      if (existing) {
+      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint").lean().catch(() => null) as unknown as { _id: unknown; idempotencyFingerprint?: string } | null;
+      if (existing && existing.idempotencyFingerprint === requestFingerprint) {
         return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id) }, { status: 200 });
       }
     }

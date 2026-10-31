@@ -4,6 +4,7 @@ const OrderSchema = new Schema({
   orderNumber: { type: String, required: true, unique: true, index: true },
   customerId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   idempotencyKey: { type: String, default: undefined },
+  idempotencyFingerprint: { type: String, default: undefined },
   subOrders: { type: [Schema.Types.Mixed], default: [] },
   total: { type: Number, required: true, min: 0 },
   shipping: { name: { type: String, required: true }, phone: { type: String, required: true }, address: { type: String, required: true }, city: { type: String, required: true } },
