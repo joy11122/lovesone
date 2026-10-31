@@ -1,3 +1,3 @@
 import { AuthForm } from "@/components/storefront";
 export const metadata={title:"Sign in"};
-export default function LoginPage(){return <section className="container py-14"><AuthForm mode="login"/></section>;}
+export default async function LoginPage({searchParams}:{searchParams:Promise<{callbackUrl?:string}>}){const params=await searchParams;const callbackUrl=params.callbackUrl?.startsWith("/")&&!params.callbackUrl.startsWith("//")?params.callbackUrl:"/account";return <section className="container py-14"><AuthForm mode="login" callbackUrl={callbackUrl}/></section>;}
