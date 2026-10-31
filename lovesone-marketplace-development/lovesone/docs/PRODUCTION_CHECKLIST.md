@@ -20,7 +20,7 @@ The current application is a development marketplace foundation. Do not approve 
 - [x] Server-authoritative product price and stock checks at checkout.
 - [x] Checkout idempotency key and duplicate-submit protection.
 - [x] Vendor application, admin approval and product moderation foundations.
-- [x] Customer order history and return-request workflow (decision only).
+- [x] Customer order history, pre-shipment COD cancellation with transactional stock restoration and return-request workflow (decision only).
 - [ ] Implement email verification, password reset, account deletion and session revocation.
 - [x] Add vendor-owned single cover-image upload with server-side signing, file type/size validation and vendor-folder ownership.
 - [ ] Add multi-image gallery, product variants, wishlist and persistent account cart.
@@ -39,7 +39,7 @@ The current application is a development marketplace foundation. Do not approve 
 - [ ] npm audit and dependency/license review.
 - [ ] Database integration tests against a disposable replica-set MongoDB.
 - [ ] Test vendor isolation with two different vendor accounts.
-- [ ] Test concurrent checkout, duplicate callbacks, stock rollback and idempotent retries.
+- [ ] Test concurrent checkout, customer/vendor cancellation races, stock rollback and idempotent retries.
 - [ ] Test Google OAuth and credentials flows against production-like configuration.
 - [ ] Test accessibility, mobile layouts, Core Web Vitals and SEO metadata.
 - [ ] Run secret, application and infrastructure security scans.

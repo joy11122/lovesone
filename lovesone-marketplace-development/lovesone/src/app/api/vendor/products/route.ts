@@ -5,6 +5,7 @@ import { auth } from "../../../../../auth";
 import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { VendorProfile } from "@/models/VendorProfile";
+import { shouldReReviewProduct } from "@/lib/order-workflow";
 
 const schema = z.object({
   title: z.string().trim().min(3).max(160),
@@ -111,7 +112,7 @@ export async function PATCH(request: NextRequest) {
     const contentChanged =
       (parsed.data.price !== undefined && changes.price !== current.price) ||
       (parsed.data.description !== undefined && parsed.data.description !== current.description);
-    if (contentChanged && current.status === "active") changes.status = "pending-review";
+    if (shouldReReviewProduct(current.status, contentChanged)) changes.status = "pending-review";
 
     const updated = await Product.findOneAndUpdate({
       _id: parsed.data.productId,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateParentOrderStatus, canTransitionVendorOrder } from "../../src/lib/order-workflow";
+import { aggregateParentOrderStatus, canCustomerCancelOrder, canTransitionVendorOrder, shouldReReviewProduct } from "../../src/lib/order-workflow";
 
 describe("vendor order transitions", () => {
   it("allows only forward fulfillment transitions and pre-shipment cancellation", () => {
@@ -17,5 +17,22 @@ describe("vendor order transitions", () => {
     expect(aggregateParentOrderStatus(["shipped", "pending"])).toBe("partially_shipped");
     expect(aggregateParentOrderStatus(["delivered", "pending"])).toBe("partially_delivered");
     expect(aggregateParentOrderStatus(["delivered", "cancelled"])).toBe("partially_cancelled");
+  });
+});
+
+describe("customer cancellation and product re-review", () => {
+  it("allows COD cancellation only before any seller has shipped", () => {
+    expect(canCustomerCancelOrder(["pending", "processing"], "pending")).toBe(true);
+    expect(canCustomerCancelOrder(["cancelled", "pending"], "pending")).toBe(true);
+    expect(canCustomerCancelOrder(["shipped", "pending"], "pending")).toBe(false);
+    expect(canCustomerCancelOrder(["delivered"], "pending")).toBe(false);
+    expect(canCustomerCancelOrder(["pending"], "paid")).toBe(false);
+  });
+
+  it("sends changed active or rejected listings back to moderation", () => {
+    expect(shouldReReviewProduct("active", true)).toBe(true);
+    expect(shouldReReviewProduct("rejected", true)).toBe(true);
+    expect(shouldReReviewProduct("pending-review", true)).toBe(false);
+    expect(shouldReReviewProduct("active", false)).toBe(false);
   });
 });

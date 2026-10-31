@@ -38,7 +38,7 @@ This document reflects the current repository implementation. A feature is marke
 - [x] Parent order and vendor suborder creation
 - [x] Transactional COD checkout with server-authoritative prices and stock checks
 - [x] Customer-scoped checkout idempotency key and duplicate-submit protection
-- [x] Customer order history and delivered-order return request
+- [x] Customer order history, pre-shipment COD cancellation with transactional stock restoration and delivered-order return request
 - [ ] bKash server-side payment initiation, execute/query verification and callback handling
 - [ ] Nagad server-side payment initiation and provider-side verification
 - [ ] SSLCommerz hosted checkout, IPN and validation API integration

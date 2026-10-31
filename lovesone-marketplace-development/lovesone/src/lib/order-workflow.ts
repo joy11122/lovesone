@@ -23,3 +23,13 @@ export function aggregateParentOrderStatus(statuses: string[]): string {
   if (statuses.some((status) => status === "cancelled")) return "partially_cancelled";
   return "pending";
 }
+
+export function canCustomerCancelOrder(statuses: string[], paymentStatus: string): boolean {
+  return paymentStatus === "pending" &&
+    statuses.some((status) => status !== "cancelled") &&
+    statuses.every((status) => ["pending", "processing", "cancelled"].includes(status));
+}
+
+export function shouldReReviewProduct(currentStatus: string, contentChanged: boolean): boolean {
+  return contentChanged && (currentStatus === "active" || currentStatus === "rejected");
+}

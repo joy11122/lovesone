@@ -73,6 +73,14 @@ export function VendorProductEditor({productId,price:initialPrice,stock:initialS
  return <div className="mt-3 flex flex-wrap items-end gap-2"><label className="text-xs font-bold">Price (৳)<input aria-label="Updated product price" type="number" min="0.01" step="0.01" value={price} onChange={event=>setPrice(event.target.value)} className="mt-1 block w-28 rounded-xl border border-[#eadfd5] bg-white px-3 py-2 text-sm font-normal"/></label><label className="text-xs font-bold">Stock<input aria-label="Updated product stock" type="number" min="0" step="1" value={stock} onChange={event=>setStock(event.target.value)} className="mt-1 block w-24 rounded-xl border border-[#eadfd5] bg-white px-3 py-2 text-sm font-normal"/></label><button type="button" onClick={()=>void save()} disabled={busy} className="rounded-full bg-[#241d1a] px-4 py-2 text-xs font-bold text-white">{busy?"Saving…":"Save"}</button><button type="button" onClick={()=>void archive()} disabled={busy} className="rounded-full border border-[#eadfd5] px-4 py-2 text-xs font-bold text-[#a45b2d]">Archive</button>{message&&<span role="status" className="w-full text-xs text-[#777487]">{message}</span>}</div>;
 }
 
+export function CustomerOrderActions({orderId,status,paymentStatus}:{orderId:string;status:string;paymentStatus:string}){
+ const router=useRouter();const [busy,setBusy]=useState(false);const [message,setMessage]=useState("");
+ const canCancel=paymentStatus==="pending"&&["pending","processing","partially_cancelled"].includes(status);
+ if(!canCancel)return null;
+ async function cancel(){if(!window.confirm("Cancel this order? Stock will be returned to the sellers."))return;setBusy(true);setMessage("");try{const response=await fetch(`/api/orders/${encodeURIComponent(orderId)}/cancel`,{method:"POST"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Cancellation failed");setMessage(data.message||"Order cancelled.");router.refresh();}catch(error){setMessage(error instanceof Error?error.message:"Unable to cancel this order.");}finally{setBusy(false);}}
+ return <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={()=>void cancel()} disabled={busy} className="rounded-full border border-[#eadfd5] px-4 py-2 text-xs font-bold text-[#a45b2d]">{busy?"Cancelling…":"Cancel order"}</button>{message&&<span role="status" className="text-xs text-[#777487]">{message}</span>}</div>;
+}
+
 export function VendorOrderActions({orderId,status}:{orderId:string;status:string}){
  const router=useRouter();const [busy,setBusy]=useState(false);const [message,setMessage]=useState("");
  const actions:Record<string,Array<{status:"processing"|"shipped"|"delivered"|"cancelled";label:string}>>={

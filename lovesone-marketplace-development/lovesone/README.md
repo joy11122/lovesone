@@ -28,7 +28,7 @@ LOVESONE is a multi-vendor pet marketplace foundation for customers, sellers and
 2. Checkout accepts COD only. The server reloads authoritative prices and seller IDs, validates stock and prescription restrictions, decrements inventory and creates a parent order with vendor suborders in a MongoDB transaction.
 3. Checkout requests include a customer-scoped idempotency key so a retry after a network timeout does not create a second order.
 4. Sellers submit product listings and cover images. New listings remain pending until an administrator approves them. Sellers can update price/stock, archive listings and manage only their own order suborders.
-5. Vendors can process, ship and deliver their own suborders; pre-shipment cancellation restores stock transactionally. Parent order status and totals are recalculated across vendors. Customers can request returns for fully delivered orders. Admin approval records the decision; it does not issue a payment refund.
+5. Vendors can process, ship and deliver their own suborders; pre-shipment cancellation restores stock transactionally. Customers can cancel the whole COD order before any seller ships it. Parent order status and totals are recalculated across vendors. Customers can request returns for fully delivered orders. Admin approval records the decision; it does not issue a payment refund.
 
 ## Authentication and access control
 
