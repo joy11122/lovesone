@@ -29,8 +29,8 @@ This document reflects the current repository implementation. A feature is marke
 - [x] Admin approval with transactional account-role update
 - [x] Vendor-scoped product submission
 - [x] Admin product moderation queue
-- [ ] Vendor product editing, inventory updates and archive actions
-- [ ] Vendor order list, fulfillment and cancellation transitions
+- [x] Vendor product price/stock editing, content re-review and soft archive actions
+- [x] Vendor-scoped order list, fulfillment transitions, pre-shipment cancellation and transactional stock restoration
 - [ ] KYC document uploads and verification evidence storage
 - [ ] Vendor shipping labels, returns and payout dashboard
 

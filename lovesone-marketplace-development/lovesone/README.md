@@ -27,8 +27,8 @@ LOVESONE is a multi-vendor pet marketplace foundation for customers, sellers and
 1. Customers browse active products and add them to a browser-persisted cart.
 2. Checkout accepts COD only. The server reloads authoritative prices and seller IDs, validates stock and prescription restrictions, decrements inventory and creates a parent order with vendor suborders in a MongoDB transaction.
 3. Checkout requests include a customer-scoped idempotency key so a retry after a network timeout does not create a second order.
-4. Sellers submit product listings. New listings remain pending until an administrator approves them.
-5. Customers can request returns for delivered orders. Admin approval records the decision; it does not issue a payment refund.
+4. Sellers submit product listings and cover images. New listings remain pending until an administrator approves them. Sellers can update price/stock, archive listings and manage only their own order suborders.
+5. Vendors can process, ship and deliver their own suborders; pre-shipment cancellation restores stock transactionally. Parent order status and totals are recalculated across vendors. Customers can request returns for fully delivered orders. Admin approval records the decision; it does not issue a payment refund.
 
 ## Authentication and access control
 
@@ -74,7 +74,7 @@ GitHub Actions runs typecheck, lint, unit tests, Playwright browser smoke tests 
 
 - Checkout currently supports **cash on delivery only**. bKash, Nagad and SSLCommerz adapters, initiation routes, callback/IPN verification and provider reconciliation are not present in the current source tree. Do not enable or advertise online payment until these are implemented and sandbox-certified.
 - Vendor-owned single product cover-image upload is implemented through a signed server-side Cloudinary upload route. Configure the three Cloudinary environment variables to enable it. Multi-image galleries, product variants, wishlist and a persistent server-side cart are not implemented.
-- Vendor order fulfillment, inventory editing, KYC document storage, payout ledger, settlement statements and commission accounting are not implemented.
+- Vendor order fulfillment, inventory editing and soft archive are implemented. KYC document storage, payout ledger, settlement statements and commission accounting are not implemented.
 - Email verification, password reset, account deletion, session revocation, distributed rate limiting, audit-log retention and operational monitoring are not implemented.
 - Courier pricing, shipping labels, automated refunds, chargebacks and delivery partner integrations are not implemented.
 - Prescription-controlled medicine listings are blocked at checkout pending a lawful prescription-review workflow.

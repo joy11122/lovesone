@@ -24,7 +24,7 @@ The current application is a development marketplace foundation. Do not approve 
 - [ ] Implement email verification, password reset, account deletion and session revocation.
 - [x] Add vendor-owned single cover-image upload with server-side signing, file type/size validation and vendor-folder ownership.
 - [ ] Add multi-image gallery, product variants, wishlist and persistent account cart.
-- [ ] Implement vendor order fulfillment, inventory editing, cancellation and restock rules.
+- [x] Vendor-scoped order fulfillment, price/stock editing, pre-shipment cancellation and transactional stock restoration are implemented. COD collection reconciliation and operational review are still required.
 - [ ] Implement bKash, Nagad and SSLCommerz server-side initiation, provider-side verification, callbacks/IPN and idempotent event handling.
 - [ ] Complete provider sandbox certification, production callback validation, automated reconciliation, stale payment reservation expiry, refunds and replay/concurrency tests.
 - [ ] Add vendor payout ledger, settlement statements, commission accounting and chargeback handling.
