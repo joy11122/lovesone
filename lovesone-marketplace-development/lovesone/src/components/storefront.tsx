@@ -13,7 +13,8 @@ const STORAGE_KEY = "lovesone-cart-v1";
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items,setItems] = useState<CartLine[]>([]);
   const [ready,setReady] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- Restore the browser-persisted cart after hydration.\n  useEffect(() => { try { const raw=localStorage.getItem(STORAGE_KEY); if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))setItems(parsed.filter((x):x is CartLine=>!!x&&typeof x==="object"&&"productId" in x&&"quantity" in x));} } catch { localStorage.removeItem(STORAGE_KEY); } setReady(true); },[]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Restore the browser-persisted cart after hydration.
+  useEffect(() => { try { const raw=localStorage.getItem(STORAGE_KEY); if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))setItems(parsed.filter((x):x is CartLine=>!!x&&typeof x==="object"&&"productId" in x&&"quantity" in x));} } catch { localStorage.removeItem(STORAGE_KEY); } setReady(true); },[]);
   useEffect(() => { if(ready) localStorage.setItem(STORAGE_KEY,JSON.stringify(items)); },[items,ready]);
   const value = useMemo<CartContextValue>(()=>({items,add:item=>setItems(current=>{const found=current.find(x=>x.productId===item.productId);return found?current.map(x=>x.productId===item.productId?{...x,quantity:x.quantity+1}:x):[...current,{...item,quantity:1}]}),setQuantity:(id,q)=>setItems(current=>q<=0?current.filter(x=>x.productId!==id):current.map(x=>x.productId===id?{...x,quantity:Math.min(99,q)}:x)),remove:id=>setItems(current=>current.filter(x=>x.productId!==id)),clear:()=>setItems([])}),[items]);
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
