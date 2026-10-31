@@ -13,6 +13,7 @@ LOVESONE is a playful, colorful multi-vendor marketplace for pet parents in Bang
 | `/product/[slug]` | Product details and add-to-bag | Public |
 | `/cart` | Persistent browser shopping bag | Public |
 | `/checkout` | Customer checkout (cash on delivery) | Customer |
+| `/order/success` | Verified order confirmation and order summary | Customer |
 | `/login` | Email/password and Google sign-in | Public |
 | `/register` | Customer registration | Public |
 | `/account` | Customer order history and return requests | Customer |
