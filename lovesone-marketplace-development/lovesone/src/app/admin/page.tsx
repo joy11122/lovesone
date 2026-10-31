@@ -10,7 +10,7 @@ import { ReturnReview } from "@/components/dashboard/return-review";
 export const metadata = { title: "Marketplace administration" };
 
 export default async function AdminPage() {
-  await requireRole(["admin", "super-admin"]);
+  await requireRole(["admin", "super-admin"], "/admin");
   await connectDatabase();
   const [customers, vendors, pendingVendors, products, pendingProducts, orders, revenue, vendorQueue, productQueue, recentOrders, returnQueue] = await Promise.all([
     User.countDocuments({ role: "customer" }),
