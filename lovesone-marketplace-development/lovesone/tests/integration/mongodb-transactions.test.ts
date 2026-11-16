@@ -13,6 +13,7 @@ const mongoUri = process.env.MONGODB_URI;
 const runIntegrationTests = Boolean(mongoUri);
 const collectionName = `transaction_verification_${randomUUID().replace(/-/g, "")}`;
 let collection: Collection<TransactionTestDocument> | undefined;
+const testProductIds: mongoose.Types.ObjectId[] = [];
 
 describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => {
   beforeAll(async () => {
@@ -28,6 +29,7 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
   });
 
   afterAll(async () => {
+    if (testProductIds.length) await Product.deleteMany({ _id: { $in: testProductIds } }).catch(() => undefined);
     if (collection) await collection.drop().catch(() => undefined);
     await mongoose.disconnect();
   });
@@ -42,6 +44,8 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
       stock: 4,
       status: "active"
     });
+
+    testProductIds.push(product._id);
 
     const attempts = await Promise.allSettled(
       Array.from({ length: 12 }, async () => {
@@ -59,7 +63,6 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
 
     expect(attempts.filter((result) => result.status === "fulfilled")).toHaveLength(4);
     expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 0 });
-    await Product.deleteOne({ _id: product._id });
   });
 
   it("rolls back reserved inventory when the enclosing order transaction aborts", async () => {
@@ -72,6 +75,7 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
       stock: 3,
       status: "active"
     });
+    testProductIds.push(product._id);
     const session = await mongoose.startSession();
 
     try {
@@ -85,7 +89,6 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
     }
 
     expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 3 });
-    await Product.deleteOne({ _id: product._id });
   });
 
   it("restores cancelled inventory even after a listing is archived", async () => {
@@ -98,6 +101,7 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
       stock: 0,
       status: "archived"
     });
+    testProductIds.push(product._id);
     const session = await mongoose.startSession();
 
     try {
@@ -110,7 +114,6 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
     }
 
     expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 2 });
-    await Product.deleteOne({ _id: product._id });
   });
 
   it("commits writes made inside a transaction", async () => {
