@@ -33,3 +33,42 @@ export function canCustomerCancelOrder(statuses: string[], paymentStatus: string
 export function shouldReReviewProduct(currentStatus: string, contentChanged: boolean): boolean {
   return contentChanged && (currentStatus === "active" || currentStatus === "rejected");
 }
+
+export type OrderFinancialLine = {
+  lineTotal?: number;
+  unitPrice?: number;
+  quantity: number;
+};
+
+export type OrderFinancialSubOrder = {
+  status: string;
+  items?: OrderFinancialLine[];
+};
+
+/** Computes immutable order value, cancelled value, and remaining COD payable. */
+export function calculateSubOrderFinancials(subOrders: OrderFinancialSubOrder[]) {
+  const lineValue = (line: OrderFinancialLine): number => {
+    const value = typeof line.lineTotal === "number"
+      ? line.lineTotal
+      : Number(line.unitPrice ?? 0) * Number(line.quantity ?? 0);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  };
+  const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+  const originalTotal = roundMoney(subOrders.reduce(
+    (sum, subOrder) => sum + (subOrder.items ?? []).reduce((lineSum, line) => lineSum + lineValue(line), 0),
+    0
+  ));
+  const cancelledTotal = roundMoney(subOrders
+    .filter((subOrder) => subOrder.status === "cancelled")
+    .reduce((sum, subOrder) => sum + (subOrder.items ?? []).reduce((lineSum, line) => lineSum + lineValue(line), 0), 0));
+  return {
+    originalTotal,
+    cancelledTotal,
+    payableTotal: roundMoney(Math.max(0, originalTotal - cancelledTotal))
+  };
+}
+
+/** Paid/authorized orders require a verified refund path before cancellation. */
+export function canVendorCancelOrder(paymentStatus: string): boolean {
+  return paymentStatus === "pending";
+}

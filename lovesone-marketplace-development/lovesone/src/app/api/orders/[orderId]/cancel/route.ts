@@ -3,11 +3,11 @@ import mongoose from "mongoose";
 import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
-import { canCustomerCancelOrder } from "@/lib/order-workflow";
+import { restoreProductStock } from "@/lib/inventory";
+import { calculateSubOrderFinancials, canCustomerCancelOrder } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
-import { Product } from "@/models/Product";
 
-type OrderLine = { productId: string; quantity: number };
+type OrderLine = { productId: string; quantity: number; lineTotal?: number; unitPrice?: number };
 type VendorSubOrder = { vendorId: string; status: string; items: OrderLine[]; cancelledAt?: Date };
 
 export async function POST(_request: NextRequest, context: { params: Promise<{ orderId: string }> }) {
@@ -38,12 +38,13 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ o
       for (const subOrder of subOrders) {
         if (subOrder.status === "cancelled") continue;
         for (const item of subOrder.items || []) {
-          const restored = await Product.updateOne(
-            { _id: item.productId, vendorId: subOrder.vendorId },
-            { $inc: { stock: item.quantity } },
-            { session: transactionSession }
+          const restored = await restoreProductStock(
+            item.productId,
+            subOrder.vendorId,
+            item.quantity,
+            transactionSession
           );
-          if (restored.matchedCount !== 1) throw new Error("RESTOCK_FAILED");
+          if (!restored) throw new Error("RESTOCK_FAILED");
         }
         subOrder.status = "cancelled";
         subOrder.cancelledAt = new Date();
@@ -51,6 +52,11 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ o
 
       order.subOrders = subOrders;
       order.markModified("subOrders");
+      const financials = calculateSubOrderFinancials(subOrders);
+      order.originalTotal = typeof order.originalTotal === "number"
+        ? order.originalTotal
+        : financials.originalTotal;
+      order.cancelledTotal = order.originalTotal;
       order.status = "cancelled";
       order.total = 0;
       await order.save({ session: transactionSession });

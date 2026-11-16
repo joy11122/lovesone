@@ -5,6 +5,7 @@ import { z } from "zod";
 import { auth } from "../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
+import { reserveProductStock } from "@/lib/inventory";
 import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
 
@@ -96,12 +97,13 @@ export async function POST(request: NextRequest) {
         }
 
         const quantity = quantities.get(String(product._id)) || 0;
-        const changed = await Product.updateOne(
-          { _id: product._id, status: "active", deletedAt: null, stock: { $gte: quantity } },
-          { $inc: { stock: -quantity } },
-          { session: transactionSession }
+        const reserved = await reserveProductStock(
+          String(product._id),
+          String(product.vendorId),
+          quantity,
+          transactionSession
         );
-        if (changed.modifiedCount !== 1) throw new Error("INSUFFICIENT_STOCK");
+        if (!reserved) throw new Error("INSUFFICIENT_STOCK");
 
         const vendorId = String(product.vendorId);
         const lineTotal = Math.round(product.price * quantity * 100) / 100;
@@ -124,6 +126,8 @@ export async function POST(request: NextRequest) {
         idempotencyFingerprint: fingerprint,
         subOrders: [...grouped.values()].map((group) => ({ ...group, status: "pending" })),
         total: Math.round(total * 100) / 100,
+        originalTotal: Math.round(total * 100) / 100,
+        cancelledTotal: 0,
         shipping: parsed.data.shipping,
         paymentMethod: "cod",
         paymentStatus: "pending",

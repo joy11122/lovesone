@@ -4,9 +4,9 @@ import { z } from "zod";
 import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
-import { canTransitionVendorOrder, aggregateParentOrderStatus, type VendorOrderStatus } from "@/lib/order-workflow";
+import { restoreProductStock } from "@/lib/inventory";
+import { calculateSubOrderFinancials, canTransitionVendorOrder, canVendorCancelOrder, aggregateParentOrderStatus, type VendorOrderStatus } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
-import { Product } from "@/models/Product";
 import { VendorProfile } from "@/models/VendorProfile";
 
 const schema = z.object({
@@ -51,15 +51,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
 
       const nextStatus = parsed.data.status as VendorOrderStatus;
       if (!canTransitionVendorOrder(subOrder.status, nextStatus)) throw new Error("INVALID_ORDER_TRANSITION");
+      if (nextStatus === "cancelled" && !canVendorCancelOrder(order.paymentStatus)) {
+        throw new Error("PAID_ORDER_CANCELLATION_BLOCKED");
+      }
 
       if (nextStatus === "cancelled") {
         for (const item of subOrder.items || []) {
-          const restored = await Product.updateOne(
-            { _id: item.productId, vendorId: session.user.id },
-            { $inc: { stock: item.quantity } },
-            { session: transactionSession }
+          const restored = await restoreProductStock(
+            item.productId,
+            session.user.id,
+            item.quantity,
+            transactionSession
           );
-          if (restored.matchedCount !== 1) throw new Error("RESTOCK_FAILED");
+          if (!restored) throw new Error("RESTOCK_FAILED");
         }
         subOrder.cancelledAt = new Date();
       }
@@ -69,16 +73,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
       order.subOrders = subOrders;
       order.markModified("subOrders");
       order.status = aggregateParentOrderStatus(subOrders.map((item) => item.status));
-      order.total = subOrders.reduce((sum, item) => {
-        if (item.status === "cancelled") return sum;
-        return sum + (item.items || []).reduce((lineSum, line) => {
-          const lineTotal = typeof line.lineTotal === "number"
-            ? line.lineTotal
-            : Number(line.unitPrice || 0) * Number(line.quantity || 0);
-          return lineSum + lineTotal;
-        }, 0);
-      }, 0);
-      order.total = Math.round(order.total * 100) / 100;
+      const financials = calculateSubOrderFinancials(subOrders);
+      order.originalTotal = typeof order.originalTotal === "number"
+        ? order.originalTotal
+        : financials.originalTotal;
+      order.cancelledTotal = financials.cancelledTotal;
+      order.total = Math.max(
+        0,
+        Math.round((order.originalTotal - order.cancelledTotal + Number.EPSILON) * 100) / 100
+      );
       await order.save({ session: transactionSession });
     });
 
@@ -89,6 +92,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
     }
     if (error instanceof Error && error.message === "INVALID_ORDER_TRANSITION") {
       return NextResponse.json({ error: "This order cannot move to that status." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "PAID_ORDER_CANCELLATION_BLOCKED") {
+      return NextResponse.json({ error: "Paid or authorized orders cannot be cancelled until a verified refund workflow is available." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "RESTOCK_FAILED") {
       return NextResponse.json({ error: "Unable to safely restore stock. Contact marketplace support." }, { status: 409 });
