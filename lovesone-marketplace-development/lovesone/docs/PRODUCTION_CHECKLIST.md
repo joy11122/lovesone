@@ -30,7 +30,8 @@ The current application is a development marketplace foundation. Do not approve 
 - [ ] Add vendor payout ledger, settlement statements, commission accounting and chargeback handling.
 - [ ] Add complete vendor KYC and admin review UI; bootstrap first super-admin securely.
 - [ ] Add support tooling, order tracking, returns/disputes and audited refund processing.
-- [ ] Add distributed rate limiting, bot protection, audit log retention and alerting.
+- [x] Add shared MongoDB-backed distributed rate limiting for registration, credential sign-in, checkout, order cancellation/returns and protected vendor/admin mutations (Phases 1–3).
+- [ ] Add bot protection, audit-log retention and operational alerting.
 - [ ] Complete legal review for marketplace terms, privacy, consumer rights, tax and medicine sales.
 - [ ] Implement prescription upload/review and pharmacist authorization before prescription products can be sold.
 
