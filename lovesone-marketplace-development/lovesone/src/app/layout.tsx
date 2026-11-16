@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { CartProvider, SiteHeader, SiteFooter } from "@/components/storefront";
-import { auth } from "@/auth";
+import { auth } from "../../auth";
 
 export const metadata: Metadata = {
   title: { default: "LOVESONE — Pet Marketplace", template: "%s | LOVESONE" },
