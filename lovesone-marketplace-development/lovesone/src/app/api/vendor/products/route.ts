@@ -24,10 +24,6 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id || session.user.role !== "vendor") {
       return NextResponse.json({ error: "Verified seller access is required." }, { status: 403 });
     }
-    const limited = await enforceUserRateLimit("vendor-product-archive", session.user.id, 20, 60 * 60 * 1000);
-    if (limited) return limited;
-    const limited = await enforceUserRateLimit("vendor-product-update", session.user.id, 60, 60 * 60 * 1000);
-    if (limited) return limited;
     const limited = await enforceUserRateLimit("vendor-product-create", session.user.id, 30, 60 * 60 * 1000);
     if (limited) return limited;
 
@@ -95,6 +91,8 @@ export async function PATCH(request: NextRequest) {
     if (!session?.user?.id || session.user.role !== "vendor") {
       return NextResponse.json({ error: "Verified seller access is required." }, { status: 403 });
     }
+    const limited = await enforceUserRateLimit("vendor-product-update", session.user.id, 60, 60 * 60 * 1000);
+    if (limited) return limited;
     const body: unknown = await request.json().catch(() => null);
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid product update.", issues: parsed.error.issues }, { status: 400 });
@@ -146,6 +144,8 @@ export async function DELETE(request: NextRequest) {
     if (!session?.user?.id || session.user.role !== "vendor") {
       return NextResponse.json({ error: "Verified seller access is required." }, { status: 403 });
     }
+    const limited = await enforceUserRateLimit("vendor-product-archive", session.user.id, 20, 60 * 60 * 1000);
+    if (limited) return limited;
     const body: unknown = await request.json().catch(() => null);
     const parsed = productIdSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid product ID." }, { status: 400 });
