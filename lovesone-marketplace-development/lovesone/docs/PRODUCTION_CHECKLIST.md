@@ -37,7 +37,7 @@ The current application is a development marketplace foundation. Do not approve 
 ## Verification gates
 - [x] TypeScript typecheck, ESLint, unit tests, Playwright smoke tests and production build in CI.
 - [ ] npm audit and dependency/license review.
-- [ ] Database integration tests against a disposable replica-set MongoDB.
+- [x] Database integration tests against a disposable MongoDB 7 replica set, including transaction commit/rollback and writable-primary checks (Phase 4).
 - [ ] Test vendor isolation with two different vendor accounts.
 - [ ] Test concurrent checkout, customer/vendor cancellation races, stock rollback and idempotent retries.
 - [ ] Test Google OAuth and credentials flows against production-like configuration.
