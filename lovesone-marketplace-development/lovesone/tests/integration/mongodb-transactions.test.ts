@@ -242,7 +242,7 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
     const attempts = await Promise.allSettled([cancelOnce(), cancelOnce()]);
     expect(attempts.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 2 });
-    const savedOrder = await Order.findById(order._id).lean();
+    const savedOrder = await Order.findById(order._id).lean() as unknown as { status: string; subOrders: Array<{ status: string }> } | null;
     expect(savedOrder?.status).toBe("cancelled");
     expect((savedOrder?.subOrders as Array<{ status: string }>)[0].status).toBe("cancelled");
   });
