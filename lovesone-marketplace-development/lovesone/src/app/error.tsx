@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function AppError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <main className="container flex min-h-[65vh] flex-col items-center justify-center py-16 text-center">
@@ -12,7 +14,7 @@ export default function AppError({ reset }: { error: Error & { digest?: string }
       </p>
       <div className="mt-7 flex flex-wrap justify-center gap-3">
         <button type="button" onClick={reset} className="btn">Try again</button>
-        <a href="/" className="inline-flex min-h-11 items-center rounded-full border border-[#eadfd5] px-5 py-3 text-sm font-bold hover:bg-[#fff4ea]">Back to home</a>
+        <Link href="/" className="inline-flex min-h-11 items-center rounded-full border border-[#eadfd5] px-5 py-3 text-sm font-bold hover:bg-[#fff4ea]">Back to home</Link>
       </div>
     </main>
   );
