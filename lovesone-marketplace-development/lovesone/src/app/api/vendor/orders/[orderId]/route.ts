@@ -4,7 +4,7 @@ import { z } from "zod";
 import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
-import { reserveProductStock, restoreProductStock } from "@/lib/inventory";
+import { restoreProductStock } from "@/lib/inventory";
 import { canTransitionVendorOrder, aggregateParentOrderStatus, type VendorOrderStatus } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
 import { VendorProfile } from "@/models/VendorProfile";
