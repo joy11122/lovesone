@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import type { Collection } from "mongodb";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -5,7 +6,6 @@ import { Product } from "../../src/models/Product";
 import { reserveProductStock, restoreProductStock } from "../../src/lib/inventory";
 
 vi.mock("server-only", () => ({}));
-import { randomUUID } from "node:crypto";
 
 type TransactionTestDocument = { _id: string; state?: string };
 
