@@ -4,10 +4,10 @@ import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { restoreProductStock } from "@/lib/inventory";
-import { canCustomerCancelOrder } from "@/lib/order-workflow";
+import { calculateSubOrderFinancials, canCustomerCancelOrder } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
 
-type OrderLine = { productId: string; quantity: number };
+type OrderLine = { productId: string; quantity: number; lineTotal?: number; unitPrice?: number };
 type VendorSubOrder = { vendorId: string; status: string; items: OrderLine[]; cancelledAt?: Date };
 
 export async function POST(_request: NextRequest, context: { params: Promise<{ orderId: string }> }) {
@@ -52,6 +52,11 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ o
 
       order.subOrders = subOrders;
       order.markModified("subOrders");
+      const financials = calculateSubOrderFinancials(subOrders);
+      order.originalTotal = typeof order.originalTotal === "number"
+        ? order.originalTotal
+        : financials.originalTotal;
+      order.cancelledTotal = order.originalTotal;
       order.status = "cancelled";
       order.total = 0;
       await order.save({ session: transactionSession });
