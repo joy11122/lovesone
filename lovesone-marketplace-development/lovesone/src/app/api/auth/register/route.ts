@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { connectDatabase } from "@/lib/db";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { getTrustedClientIp } from "@/lib/client-ip";
 import { User } from "@/models/User";
 import { apiError } from "@/lib/http";
 
@@ -18,9 +19,7 @@ export async function POST(request: NextRequest) {
 
     // Prefer Vercel's proxy-provided client IP. Never trust arbitrary
     // X-Forwarded-For values in deployments outside the trusted proxy.
-    const clientIp = request.headers.get("x-vercel-forwarded-for")
-      ?.split(",")[0]
-      ?.trim();
+    const clientIp = getTrustedClientIp(request.headers);
     if (clientIp) {
       const ipLimit = await consumeRateLimit(`register:ip:${clientIp}`, 5, 15 * 60 * 1000);
       if (!ipLimit.allowed) {

@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { connectDatabase } from "@/lib/db";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { getTrustedClientIp } from "@/lib/client-ip";
 import { User } from "@/models/User";
 
 const credentialsSchema = z.object({
@@ -24,9 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         await connectDatabase();
         const email = parsed.data.email.toLowerCase();
-        const clientIp = request.headers.get("x-vercel-forwarded-for")
-          ?.split(",")[0]
-          ?.trim();
+        const clientIp = getTrustedClientIp(request.headers);
 
         // Apply independent account and network buckets to slow credential
         // stuffing without storing raw email addresses or IP addresses.
