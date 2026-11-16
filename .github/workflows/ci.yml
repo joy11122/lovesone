@@ -9,21 +9,11 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.adminCommand({ ping: 1 })'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     defaults:
       run:
         working-directory: lovesone-marketplace-development/lovesone
     env:
-      MONGODB_URI: mongodb://127.0.0.1:27017/lovesone
+      MONGODB_URI: mongodb://127.0.0.1:27017/lovesone?replicaSet=rs0
       AUTH_SECRET: ci-only-not-a-production-secret
       AUTH_GOOGLE_ID: ci-google-client-id
       AUTH_GOOGLE_SECRET: ci-google-client-secret
@@ -36,13 +26,36 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: lovesone-marketplace-development/lovesone/package.json
+      - name: Start MongoDB replica set
+        run: |
+          docker run -d --name lovesone-mongodb -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+
+          for attempt in $(seq 1 30); do
+            if docker exec lovesone-mongodb mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' 2>/dev/null | grep -q 1; then
+              break
+            fi
+            sleep 2
+          done
+
+          docker exec lovesone-mongodb mongosh --quiet --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: '127.0.0.1:27017'}]})"
+
+          for attempt in $(seq 1 30); do
+            if docker exec lovesone-mongodb mongosh --quiet --eval 'db.hello().isWritablePrimary' 2>/dev/null | grep -q true; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "MongoDB replica set did not become primary in time."
+          docker logs lovesone-mongodb
+          exit 1
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Type check
         run: npm run typecheck
       - name: Lint
         run: npm run lint
-      - name: Unit tests
+      - name: Unit and database integration tests
         run: npm test
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
