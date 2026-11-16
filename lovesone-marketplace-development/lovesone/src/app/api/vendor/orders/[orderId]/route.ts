@@ -5,7 +5,7 @@ import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { restoreProductStock } from "@/lib/inventory";
-import { calculateSubOrderFinancials, canTransitionVendorOrder, aggregateParentOrderStatus, type VendorOrderStatus } from "@/lib/order-workflow";
+import { calculateSubOrderFinancials, canTransitionVendorOrder, canVendorCancelOrder, aggregateParentOrderStatus, type VendorOrderStatus } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
 import { VendorProfile } from "@/models/VendorProfile";
 
@@ -51,7 +51,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
 
       const nextStatus = parsed.data.status as VendorOrderStatus;
       if (!canTransitionVendorOrder(subOrder.status, nextStatus)) throw new Error("INVALID_ORDER_TRANSITION");
-      if (nextStatus === "cancelled" && order.paymentStatus !== "pending") {
+      if (nextStatus === "cancelled" && !canVendorCancelOrder(order.paymentStatus)) {
         throw new Error("PAID_ORDER_CANCELLATION_BLOCKED");
       }
 
