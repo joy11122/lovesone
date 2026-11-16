@@ -5,7 +5,8 @@ import { z } from "zod";
 import { auth } from "../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
-import { reserveProductStock, restoreProductStock } from "@/lib/inventory";
+import { reserveProductStock } from "@/lib/inventory";
+import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
 
 const schema = z.object({
