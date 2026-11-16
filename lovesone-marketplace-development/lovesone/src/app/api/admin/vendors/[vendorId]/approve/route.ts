@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "../../../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { User } from "@/models/User";
 import { VendorProfile } from "@/models/VendorProfile";
@@ -9,6 +10,8 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ v
   const sessionUser = await auth();
   if (!sessionUser?.user?.id || !["admin", "super-admin"].includes(sessionUser.user.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { vendorId } = await context.params;
+  const limited = await enforceUserRateLimit("admin-vendor-approval", sessionUser.user.id, 100, 15 * 60 * 1000);
+  if (limited) return limited;
   if (!mongoose.isValidObjectId(vendorId)) return NextResponse.json({ error: "Invalid vendor ID" }, { status: 400 });
   try {
     await connectDatabase();

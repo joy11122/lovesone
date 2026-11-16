@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { auth } from "../../../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { Order } from "@/models/Order";
 
@@ -16,6 +17,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
     if (!session?.user?.id || !["admin", "super-admin"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const limited = await enforceUserRateLimit("admin-return-review", session.user.id, 100, 15 * 60 * 1000);
+    if (limited) return limited;
 
     const { orderId } = await context.params;
     if (!mongoose.isValidObjectId(orderId)) return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });

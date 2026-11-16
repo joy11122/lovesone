@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { auth } from "../../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { Order } from "@/models/Order";
 
@@ -21,6 +22,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
     if (!parsed.success) return NextResponse.json({ error: "Please provide a valid return reason.", issues: parsed.error.issues }, { status: 400 });
 
     await connectDatabase();
+    const limited = await enforceUserRateLimit("order-return", session.user.id, 3, 24 * 60 * 60 * 1000);
+    if (limited) return limited;
+
     const order = await Order.findOneAndUpdate(
       { _id: orderId, customerId: session.user.id, status: "delivered", "returnRequest.status": null },
       { $set: {

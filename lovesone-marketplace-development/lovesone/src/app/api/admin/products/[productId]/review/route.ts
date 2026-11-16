@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "../../../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { z } from "zod";
@@ -16,6 +17,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
     if (!session?.user?.id || !["admin", "super-admin"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const limited = await enforceUserRateLimit("admin-product-review", session.user.id, 100, 15 * 60 * 1000);
+    if (limited) return limited;
 
     const { productId } = await context.params;
     if (!mongoose.isValidObjectId(productId)) {

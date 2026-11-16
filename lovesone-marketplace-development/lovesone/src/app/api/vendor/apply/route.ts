@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { VendorProfile } from "@/models/VendorProfile";
 
@@ -23,6 +24,9 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Please check the store details.", issues: parsed.error.issues }, { status: 400 });
     }
+
+    const limited = await enforceUserRateLimit("vendor-application", session.user.id, 3, 24 * 60 * 60 * 1000);
+    if (limited) return limited;
 
     await connectDatabase();
     const existing = await VendorProfile.findOne({ userId: session.user.id }).select("_id").lean();

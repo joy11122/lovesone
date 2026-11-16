@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "../../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { canCustomerCancelOrder } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
@@ -20,6 +21,9 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ o
     if (!mongoose.isValidObjectId(orderId)) return NextResponse.json({ error: "Invalid order ID." }, { status: 400 });
 
     await connectDatabase();
+    const limited = await enforceUserRateLimit("order-cancel", session.user.id, 5, 15 * 60 * 1000);
+    if (limited) return limited;
+
     const transactionSession = await mongoose.startSession();
     dbSession = transactionSession;
     await transactionSession.withTransaction(async () => {

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { connectDatabase } from "@/lib/db";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { getTrustedClientIp } from "@/lib/client-ip";
 import { User } from "@/models/User";
 import { apiError } from "@/lib/http";
 
@@ -16,17 +17,17 @@ export async function POST(request: NextRequest) {
   try {
     await connectDatabase();
 
-    // Vercel supplies this header from the edge; never trust a client-provided
-    // X-Forwarded-For value when the trusted platform header is available.
-    const clientIp = request.headers.get("x-vercel-forwarded-for")
-      ?.split(",")[0]
-      ?.trim() || "unknown";
-    const rateLimit = await consumeRateLimit(`register:${clientIp}`, 5, 15 * 60 * 1000);
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: "Too many registration attempts. Please try again later." },
-        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
-      );
+    // Prefer Vercel's proxy-provided client IP. Never trust arbitrary
+    // X-Forwarded-For values in deployments outside the trusted proxy.
+    const clientIp = getTrustedClientIp(request.headers);
+    if (clientIp) {
+      const ipLimit = await consumeRateLimit(`register:ip:${clientIp}`, 5, 15 * 60 * 1000);
+      if (!ipLimit.allowed) {
+        return NextResponse.json(
+          { error: "Too many registration attempts. Please try again later." },
+          { status: 429, headers: { "Retry-After": String(ipLimit.retryAfterSeconds) } }
+        );
+      }
     }
 
     const body: unknown = await request.json().catch(() => null);
@@ -36,6 +37,14 @@ export async function POST(request: NextRequest) {
     }
 
     const email = parsed.data.email.toLowerCase();
+    const emailLimit = await consumeRateLimit(`register:email:${email}`, 5, 60 * 60 * 1000);
+    if (!emailLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many registration attempts for this email. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(emailLimit.retryAfterSeconds) } }
+      );
+    }
+
     const passwordHash = await bcrypt.hash(parsed.data.password, 12);
     await User.create({
       name: parsed.data.name,
