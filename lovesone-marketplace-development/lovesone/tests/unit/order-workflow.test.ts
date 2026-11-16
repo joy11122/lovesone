@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateParentOrderStatus, canCustomerCancelOrder, canTransitionVendorOrder, shouldReReviewProduct } from "../../src/lib/order-workflow";
+import { aggregateParentOrderStatus, calculateSubOrderFinancials, canCustomerCancelOrder, canTransitionVendorOrder, shouldReReviewProduct } from "../../src/lib/order-workflow";
 
 describe("vendor order transitions", () => {
   it("allows only forward fulfillment transitions and pre-shipment cancellation", () => {
@@ -34,5 +34,34 @@ describe("customer cancellation and product re-review", () => {
     expect(shouldReReviewProduct("rejected", true)).toBe(true);
     expect(shouldReReviewProduct("pending-review", true)).toBe(false);
     expect(shouldReReviewProduct("active", false)).toBe(false);
+  });
+});
+
+
+describe("order financial totals", () => {
+  it("preserves the original order value and calculates the remaining payable total", () => {
+    const totals = calculateSubOrderFinancials([
+      { status: "delivered", items: [{ quantity: 2, unitPrice: 125 }] },
+      { status: "cancelled", items: [{ quantity: 1, lineTotal: 75 }] }
+    ]);
+
+    expect(totals).toEqual({
+      originalTotal: 325,
+      cancelledTotal: 75,
+      payableTotal: 250
+    });
+  });
+
+  it("does not create negative payable totals from malformed historical line values", () => {
+    const totals = calculateSubOrderFinancials([
+      { status: "cancelled", items: [{ quantity: 1, lineTotal: 100 }] },
+      { status: "pending", items: [{ quantity: 1, lineTotal: Number.NaN }] }
+    ]);
+
+    expect(totals).toEqual({
+      originalTotal: 100,
+      cancelledTotal: 100,
+      payableTotal: 0
+    });
   });
 });
