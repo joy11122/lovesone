@@ -1,11 +1,14 @@
 import mongoose from "mongoose";
+import type { Collection } from "mongodb";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
+
+type TransactionTestDocument = { _id: string; state?: string };
 
 const mongoUri = process.env.MONGODB_URI;
 const runIntegrationTests = Boolean(mongoUri);
 const collectionName = `transaction_verification_${randomUUID().replace(/-/g, "")}`;
-let collection: ReturnType<NonNullable<typeof mongoose.connection.db>["collection"]> | undefined;
+let collection: Collection<TransactionTestDocument> | undefined;
 
 describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => {
   beforeAll(async () => {
@@ -17,7 +20,7 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
     expect(hello.setName).toBe("rs0");
     expect(hello.isWritablePrimary).toBe(true);
 
-    collection = database.collection(collectionName);
+    collection = database.collection<TransactionTestDocument>(collectionName);
   });
 
   afterAll(async () => {
