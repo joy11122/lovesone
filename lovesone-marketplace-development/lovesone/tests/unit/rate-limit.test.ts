@@ -1,6 +1,8 @@
 import { createHmac, randomUUID } from "node:crypto";
 import mongoose from "mongoose";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
 import { connectDatabase } from "../../src/lib/db";
 import { consumeRateLimit } from "../../src/lib/rate-limit";
 
