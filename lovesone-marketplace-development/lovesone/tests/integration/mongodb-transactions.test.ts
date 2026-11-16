@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import type { Collection } from "mongodb";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { Product } from "../../src/models/Product";
+import { reserveProductStock, restoreProductStock } from "../../src/lib/inventory";
+
+vi.mock("server-only", () => ({}));
 import { randomUUID } from "node:crypto";
 
 type TransactionTestDocument = { _id: string; state?: string };
@@ -26,6 +30,87 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
   afterAll(async () => {
     if (collection) await collection.drop().catch(() => undefined);
     await mongoose.disconnect();
+  });
+
+  it("never reserves more inventory than exists under concurrent checkout attempts", async () => {
+    const vendorId = new mongoose.Types.ObjectId();
+    const product = await Product.create({
+      vendorId,
+      title: "Concurrency test product",
+      slug: `concurrency-${randomUUID()}`,
+      price: 100,
+      stock: 4,
+      status: "active"
+    });
+
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 12 }, async () => {
+        const session = await mongoose.startSession();
+        try {
+          await session.withTransaction(async () => {
+            const reserved = await reserveProductStock(String(product._id), String(vendorId), 1, session);
+            if (!reserved) throw new Error("INSUFFICIENT_STOCK");
+          });
+        } finally {
+          await session.endSession();
+        }
+      })
+    );
+
+    expect(attempts.filter((result) => result.status === "fulfilled")).toHaveLength(4);
+    expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 0 });
+    await Product.deleteOne({ _id: product._id });
+  });
+
+  it("rolls back reserved inventory when the enclosing order transaction aborts", async () => {
+    const vendorId = new mongoose.Types.ObjectId();
+    const product = await Product.create({
+      vendorId,
+      title: "Rollback test product",
+      slug: `rollback-${randomUUID()}`,
+      price: 50,
+      stock: 3,
+      status: "active"
+    });
+    const session = await mongoose.startSession();
+
+    try {
+      await expect(session.withTransaction(async () => {
+        const reserved = await reserveProductStock(String(product._id), String(vendorId), 2, session);
+        if (!reserved) throw new Error("INSUFFICIENT_STOCK");
+        throw new Error("INTENTIONAL_ORDER_ABORT");
+      })).rejects.toThrow("INTENTIONAL_ORDER_ABORT");
+    } finally {
+      await session.endSession();
+    }
+
+    expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 3 });
+    await Product.deleteOne({ _id: product._id });
+  });
+
+  it("restores cancelled inventory even after a listing is archived", async () => {
+    const vendorId = new mongoose.Types.ObjectId();
+    const product = await Product.create({
+      vendorId,
+      title: "Archived listing test product",
+      slug: `archived-${randomUUID()}`,
+      price: 75,
+      stock: 0,
+      status: "archived"
+    });
+    const session = await mongoose.startSession();
+
+    try {
+      await session.withTransaction(async () => {
+        const restored = await restoreProductStock(String(product._id), String(vendorId), 2, session);
+        expect(restored).toBe(true);
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 2 });
+    await Product.deleteOne({ _id: product._id });
   });
 
   it("commits writes made inside a transaction", async () => {
