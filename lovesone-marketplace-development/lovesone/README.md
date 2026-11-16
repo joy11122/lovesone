@@ -75,7 +75,7 @@ GitHub Actions runs typecheck, lint, unit tests, Playwright browser smoke tests 
 - Checkout currently supports **cash on delivery only**. bKash, Nagad and SSLCommerz adapters, initiation routes, callback/IPN verification and provider reconciliation are not present in the current source tree. Do not enable or advertise online payment until these are implemented and sandbox-certified.
 - Vendor-owned single product cover-image upload is implemented through a signed server-side Cloudinary upload route. Configure the three Cloudinary environment variables to enable it. Multi-image galleries, product variants, wishlist and a persistent server-side cart are not implemented.
 - Vendor order fulfillment, inventory editing and soft archive are implemented. KYC document storage, payout ledger, settlement statements and commission accounting are not implemented.
-- Email verification, password reset, account deletion, session revocation, distributed rate limiting, audit-log retention and operational monitoring are not implemented.
+- Email verification, password reset, account deletion, explicit session revocation, audit-log retention and operational monitoring are not implemented. Shared MongoDB-backed distributed rate limiting is implemented for registration, credential sign-in, checkout, order cancellation/returns and protected vendor/admin mutations.
 - Courier pricing, shipping labels, automated refunds, chargebacks and delivery partner integrations are not implemented.
 - Prescription-controlled medicine listings are blocked at checkout pending a lawful prescription-review workflow.
 - MongoDB transactions require a replica-set deployment such as MongoDB Atlas.
