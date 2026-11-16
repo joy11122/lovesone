@@ -126,6 +126,8 @@ export async function POST(request: NextRequest) {
         idempotencyFingerprint: fingerprint,
         subOrders: [...grouped.values()].map((group) => ({ ...group, status: "pending" })),
         total: Math.round(total * 100) / 100,
+        originalTotal: Math.round(total * 100) / 100,
+        cancelledTotal: 0,
         shipping: parsed.data.shipping,
         paymentMethod: "cod",
         paymentStatus: "pending",
