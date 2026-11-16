@@ -1,7 +1,7 @@
 import "server-only";
 
 import mongoose from "mongoose";
-import { Product } from "@/models/Product";
+import { Product } from "../models/Product";
 
 /**
  * Atomically reserves inventory inside the caller's MongoDB transaction.
