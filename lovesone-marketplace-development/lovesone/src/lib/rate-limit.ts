@@ -12,6 +12,10 @@ type RateLimitRecord = {
 
 let ttlIndexPromise: Promise<string> | undefined;
 
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
+}
+
 /**
  * Atomically consumes one request from a MongoDB-backed fixed window.
  * The shared collection makes limits consistent across serverless instances.
@@ -47,30 +51,45 @@ export async function consumeRateLimit(
   const cutoff = new Date(now.getTime() - windowMs);
   const nextExpiry = new Date(now.getTime() + windowMs);
   const digest = createHmac("sha256", secret).update(identifier).digest("hex");
-
-  const record = await collection.findOneAndUpdate(
-    { _id: digest },
-    [
-      {
-        $set: {
-          count: {
-            $cond: [
-              { $gt: ["$windowStartedAt", cutoff] },
-              { $add: [{ $ifNull: ["$count", 0] }, 1] },
-              1
-            ]
-          },
-          windowStartedAt: {
-            $cond: [{ $gt: ["$windowStartedAt", cutoff] }, "$windowStartedAt", now]
-          },
-          expiresAt: {
-            $cond: [{ $gt: ["$windowStartedAt", cutoff] }, "$expiresAt", nextExpiry]
-          }
+  const filter = { _id: digest };
+  const pipeline = [
+    {
+      $set: {
+        count: {
+          $cond: [
+            { $gt: ["$windowStartedAt", cutoff] },
+            { $add: [{ $ifNull: ["$count", 0] }, 1] },
+            1
+          ]
+        },
+        windowStartedAt: {
+          $cond: [{ $gt: ["$windowStartedAt", cutoff] }, "$windowStartedAt", now]
+        },
+        expiresAt: {
+          $cond: [{ $gt: ["$windowStartedAt", cutoff] }, "$expiresAt", nextExpiry]
         }
       }
-    ],
-    { upsert: true, returnDocument: "after" }
-  );
+    }
+  ];
+
+  let record: RateLimitRecord | null;
+  try {
+    record = await collection.findOneAndUpdate(
+      filter,
+      pipeline,
+      { upsert: true, returnDocument: "after" }
+    );
+  } catch (error) {
+    // Concurrent first requests can both observe a missing _id and race to
+    // upsert. The unique _id index lets one win; retry the losing increment
+    // against the record that the winning request just created.
+    if (!isDuplicateKeyError(error)) throw error;
+    record = await collection.findOneAndUpdate(
+      filter,
+      pipeline,
+      { returnDocument: "after" }
+    );
+  }
 
   if (!record) throw new Error("Unable to apply rate limit");
   return {
