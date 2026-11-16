@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { auth } from "../../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { canTransitionVendorOrder, aggregateParentOrderStatus, type VendorOrderStatus } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
@@ -31,6 +32,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
     await connectDatabase();
     const profile = await VendorProfile.findOne({ userId: session.user.id, verificationStatus: "verified" }).select("_id").lean();
     if (!profile) return NextResponse.json({ error: "Your seller profile is not verified." }, { status: 403 });
+
+    const limited = await enforceUserRateLimit("vendor-order-update", session.user.id, 30, 15 * 60 * 1000);
+    if (limited) return limited;
 
     const transactionSession = await mongoose.startSession();
     dbSession = transactionSession;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { auth } from "../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { VendorProfile } from "@/models/VendorProfile";
 
@@ -14,6 +15,9 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
     if (session.user.role !== "vendor") return NextResponse.json({ error: "Verified seller access is required." }, { status: 403 });
+
+    const limited = await enforceUserRateLimit("vendor-image-upload", session.user.id, 20, 60 * 60 * 1000);
+    if (limited) return limited;
 
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;

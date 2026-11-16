@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { auth } from "../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
@@ -65,6 +66,9 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id) }, { status: 200 });
     }
+
+    const limited = await enforceUserRateLimit("checkout", customerId, 8, 15 * 60 * 1000);
+    if (limited) return limited;
 
     const transactionSession = await mongoose.startSession();
     dbSession = transactionSession;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { auth } from "../../../../../auth";
+import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { VendorProfile } from "@/models/VendorProfile";
@@ -23,6 +24,12 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id || session.user.role !== "vendor") {
       return NextResponse.json({ error: "Verified seller access is required." }, { status: 403 });
     }
+    const limited = await enforceUserRateLimit("vendor-product-archive", session.user.id, 20, 60 * 60 * 1000);
+    if (limited) return limited;
+    const limited = await enforceUserRateLimit("vendor-product-update", session.user.id, 60, 60 * 60 * 1000);
+    if (limited) return limited;
+    const limited = await enforceUserRateLimit("vendor-product-create", session.user.id, 30, 60 * 60 * 1000);
+    if (limited) return limited;
 
     const body: unknown = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
