@@ -67,3 +67,8 @@ export function calculateSubOrderFinancials(subOrders: OrderFinancialSubOrder[])
     payableTotal: roundMoney(Math.max(0, originalTotal - cancelledTotal))
   };
 }
+
+/** Paid/authorized orders require a verified refund path before cancellation. */
+export function canVendorCancelOrder(paymentStatus: string): boolean {
+  return paymentStatus === "pending";
+}
