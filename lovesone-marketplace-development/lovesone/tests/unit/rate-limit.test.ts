@@ -13,13 +13,17 @@ integrationDescribe("MongoDB shared rate limiter", () => {
   });
 
   afterAll(async () => {
-    const database = mongoose.connection.db;
-    const secret = process.env.AUTH_SECRET;
-    if (!database || !secret || identifiers.length === 0) return;
-    const digests = identifiers.map((identifier) =>
-      createHmac("sha256", secret).update(identifier).digest("hex")
-    );
-    await database.collection("api_rate_limits").deleteMany({ _id: { $in: digests } });
+    try {
+      const database = mongoose.connection.db;
+      const secret = process.env.AUTH_SECRET;
+      if (!database || !secret || identifiers.length === 0) return;
+      const digests = identifiers.map((identifier) =>
+        createHmac("sha256", secret).update(identifier).digest("hex")
+      );
+      await database.collection("api_rate_limits").deleteMany({ _id: { $in: digests } });
+    } finally {
+      await mongoose.disconnect();
+    }
   });
 
   it("enforces an exact limit under concurrent first-request upserts", async () => {
