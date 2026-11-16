@@ -65,6 +65,32 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
     expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 0 });
   });
 
+  it("does not reserve inventory through a different vendor identity", async () => {
+    const vendorId = new mongoose.Types.ObjectId();
+    const otherVendorId = new mongoose.Types.ObjectId();
+    const product = await Product.create({
+      vendorId,
+      title: "Vendor isolation test product",
+      slug: `vendor-isolation-${randomUUID()}`,
+      price: 40,
+      stock: 3,
+      status: "active"
+    });
+    testProductIds.push(product._id);
+    const session = await mongoose.startSession();
+
+    try {
+      await session.withTransaction(async () => {
+        const reserved = await reserveProductStock(String(product._id), String(otherVendorId), 1, session);
+        expect(reserved).toBe(false);
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 3 });
+  });
+
   it("rolls back reserved inventory when the enclosing order transaction aborts", async () => {
     const vendorId = new mongoose.Types.ObjectId();
     const product = await Product.create({
