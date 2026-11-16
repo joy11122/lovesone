@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateParentOrderStatus, calculateSubOrderFinancials, canCustomerCancelOrder, canTransitionVendorOrder, shouldReReviewProduct } from "../../src/lib/order-workflow";
+import { aggregateParentOrderStatus, calculateSubOrderFinancials, canCustomerCancelOrder, canTransitionVendorOrder, canVendorCancelOrder, shouldReReviewProduct } from "../../src/lib/order-workflow";
 
 describe("vendor order transitions", () => {
   it("allows only forward fulfillment transitions and pre-shipment cancellation", () => {
@@ -63,5 +63,15 @@ describe("order financial totals", () => {
       cancelledTotal: 100,
       payableTotal: 0
     });
+  });
+});
+
+
+describe("vendor cancellation payment guard", () => {
+  it("blocks paid and authorized orders until refund execution is supported", () => {
+    expect(canVendorCancelOrder("pending")).toBe(true);
+    expect(canVendorCancelOrder("paid")).toBe(false);
+    expect(canVendorCancelOrder("authorized")).toBe(false);
+    expect(canVendorCancelOrder("refunded")).toBe(false);
   });
 });
