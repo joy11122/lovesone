@@ -4,9 +4,9 @@ import { z } from "zod";
 import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
+import { reserveProductStock, restoreProductStock } from "@/lib/inventory";
 import { canTransitionVendorOrder, aggregateParentOrderStatus, type VendorOrderStatus } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
-import { Product } from "@/models/Product";
 import { VendorProfile } from "@/models/VendorProfile";
 
 const schema = z.object({
@@ -54,12 +54,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
 
       if (nextStatus === "cancelled") {
         for (const item of subOrder.items || []) {
-          const restored = await Product.updateOne(
-            { _id: item.productId, vendorId: session.user.id },
-            { $inc: { stock: item.quantity } },
-            { session: transactionSession }
+          const restored = await restoreProductStock(
+            item.productId,
+            session.user.id,
+            item.quantity,
+            transactionSession
           );
-          if (restored.matchedCount !== 1) throw new Error("RESTOCK_FAILED");
+          if (!restored) throw new Error("RESTOCK_FAILED");
         }
         subOrder.cancelledAt = new Date();
       }
