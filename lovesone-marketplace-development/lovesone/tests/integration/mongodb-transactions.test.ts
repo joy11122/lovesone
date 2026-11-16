@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import type { Collection } from "mongodb";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Product } from "../../src/models/Product";
+import { Order } from "../../src/models/Order";
+import { canCustomerCancelOrder } from "../../src/lib/order-workflow";
 import { reserveProductStock, restoreProductStock } from "../../src/lib/inventory";
 
 vi.mock("server-only", () => ({}));
@@ -14,6 +16,7 @@ const runIntegrationTests = Boolean(mongoUri);
 const collectionName = `transaction_verification_${randomUUID().replace(/-/g, "")}`;
 let collection: Collection<TransactionTestDocument> | undefined;
 const testProductIds: mongoose.Types.ObjectId[] = [];
+const testOrderIds: mongoose.Types.ObjectId[] = [];
 
 describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => {
   beforeAll(async () => {
@@ -25,11 +28,13 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
     expect(hello.setName).toBe("rs0");
     expect(hello.isWritablePrimary).toBe(true);
 
+    await Order.init();
     collection = database.collection<TransactionTestDocument>(collectionName);
   });
 
   afterAll(async () => {
     if (testProductIds.length) await Product.deleteMany({ _id: { $in: testProductIds } }).catch(() => undefined);
+    if (testOrderIds.length) await Order.deleteMany({ _id: { $in: testOrderIds } }).catch(() => undefined);
     if (collection) await collection.drop().catch(() => undefined);
     await mongoose.disconnect();
   });
@@ -140,6 +145,106 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
     }
 
     expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 2 });
+  });
+
+  it("enforces one checkout record per customer idempotency key under concurrent requests", async () => {
+    const customerId = new mongoose.Types.ObjectId();
+    const idempotencyKey = randomUUID();
+    const createOrder = () => Order.create({
+      orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
+      customerId,
+      idempotencyKey,
+      idempotencyFingerprint: "same-request-fingerprint",
+      subOrders: [],
+      total: 0,
+      shipping: { name: "Test Customer", phone: "01712345678", address: "123 Test Street", city: "Khulna" },
+      paymentMethod: "cod",
+      paymentStatus: "pending",
+      status: "pending"
+    });
+
+    const attempts = await Promise.allSettled([createOrder(), createOrder()]);
+    const successful = attempts.filter((result) => result.status === "fulfilled");
+    expect(successful).toHaveLength(1);
+    const order = successful[0];
+    if (order.status === "fulfilled") testOrderIds.push(order.value._id);
+
+    const duplicate = attempts.find((result) => result.status === "rejected");
+    expect(duplicate).toBeDefined();
+    if (duplicate?.status === "rejected") {
+      expect((duplicate.reason as { code?: number }).code).toBe(11000);
+    }
+    expect(await Order.countDocuments({ customerId, idempotencyKey })).toBe(1);
+  });
+
+  it("restores stock only once when customer cancellation requests race", async () => {
+    const customerId = new mongoose.Types.ObjectId();
+    const vendorId = new mongoose.Types.ObjectId();
+    const product = await Product.create({
+      vendorId,
+      title: "Cancellation race test product",
+      slug: `cancel-race-${randomUUID()}`,
+      price: 25,
+      stock: 0,
+      status: "active"
+    });
+    testProductIds.push(product._id);
+
+    const order = await Order.create({
+      orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
+      customerId,
+      subOrders: [{
+        vendorId: String(vendorId),
+        status: "pending",
+        items: [{ productId: String(product._id), quantity: 2, unitPrice: 25, lineTotal: 50 }]
+      }],
+      total: 50,
+      originalTotal: 50,
+      cancelledTotal: 0,
+      shipping: { name: "Test Customer", phone: "01712345678", address: "123 Test Street", city: "Khulna" },
+      paymentMethod: "cod",
+      paymentStatus: "pending",
+      status: "pending"
+    });
+    testOrderIds.push(order._id);
+
+    const cancelOnce = async () => {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          const current = await Order.findById(order._id).session(session);
+          if (!current) throw new Error("ORDER_NOT_FOUND");
+          const subOrders = current.subOrders as Array<{ vendorId: string; status: string; items: Array<{ productId: string; quantity: number }> }>;
+          if (!canCustomerCancelOrder(subOrders.map((subOrder) => subOrder.status), current.paymentStatus)) {
+            throw new Error("CANCELLATION_NOT_ALLOWED");
+          }
+          for (const subOrder of subOrders) {
+            if (subOrder.status === "cancelled") continue;
+            for (const item of subOrder.items) {
+              const restored = await restoreProductStock(item.productId, subOrder.vendorId, item.quantity, session);
+              if (!restored) throw new Error("RESTOCK_FAILED");
+            }
+            subOrder.status = "cancelled";
+          }
+          current.subOrders = subOrders;
+          current.markModified("subOrders");
+          current.status = "cancelled";
+          current.total = 0;
+          current.cancelledTotal = current.originalTotal ?? 50;
+          await current.save({ session });
+        });
+        return "cancelled";
+      } finally {
+        await session.endSession();
+      }
+    };
+
+    const attempts = await Promise.allSettled([cancelOnce(), cancelOnce()]);
+    expect(attempts.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(await Product.findById(product._id).select("stock").lean()).toMatchObject({ stock: 2 });
+    const savedOrder = await Order.findById(order._id).lean();
+    expect(savedOrder?.status).toBe("cancelled");
+    expect((savedOrder?.subOrders as Array<{ status: string }>)[0].status).toBe("cancelled");
   });
 
   it("commits writes made inside a transaction", async () => {
