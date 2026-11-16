@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
-import { reserveProductStock, restoreProductStock } from "@/lib/inventory";
+import { restoreProductStock } from "@/lib/inventory";
 import { canCustomerCancelOrder } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
 
