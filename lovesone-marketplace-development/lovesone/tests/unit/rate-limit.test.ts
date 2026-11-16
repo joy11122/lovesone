@@ -20,7 +20,7 @@ integrationDescribe("MongoDB shared rate limiter", () => {
       const digests = identifiers.map((identifier) =>
         createHmac("sha256", secret).update(identifier).digest("hex")
       );
-      await database.collection("api_rate_limits").deleteMany({ _id: { $in: digests } });
+      await database.collection<{ _id: string }>("api_rate_limits").deleteMany({ _id: { $in: digests } });
     } finally {
       await mongoose.disconnect();
     }
