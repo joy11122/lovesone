@@ -91,9 +91,11 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     totalProducts = await Product.countDocuments(filter);
     const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
     currentPage = Math.min(requestedPage, totalPages);
-    const sortOption = sort === "price-asc" ? { price: 1 as const, _id: 1 as const }
-      : sort === "price-desc" ? { price: -1 as const, _id: 1 as const }
-      : { createdAt: -1 as const, _id: -1 as const };
+    const sortOption: Record<string, 1 | -1> = sort === "price-asc"
+      ? { price: 1, _id: 1 }
+      : sort === "price-desc"
+        ? { price: -1, _id: 1 }
+        : { createdAt: -1, _id: -1 };
 
     const fetchedProducts = await Product.find(filter)
       .sort(sortOption)
