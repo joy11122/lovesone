@@ -3,6 +3,7 @@ import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { VendorProfile } from "@/models/VendorProfile";
 import { Order } from "@/models/Order";
+import { VendorSettlement } from "@/models/VendorSettlement";
 import { VendorOrderActions, VendorProductEditor, VendorProductForm } from "@/components/storefront";
 
 export const metadata = { title: "Seller dashboard" };
@@ -13,17 +14,20 @@ type VendorSubOrder = { vendorId: unknown; status: string; items: VendorOrderLin
 export default async function VendorDashboardPage() {
   const user = await requireRole(["vendor"], "/vendor/dashboard");
   await connectDatabase();
-  const [profileResult, products, orders] = await Promise.all([
+  const [profileResult, products, orders, settlements] = await Promise.all([
     VendorProfile.findOne({ userId: user.id }).lean(),
     Product.find({ vendorId: user.id, deletedAt: null }).sort({ createdAt: -1 }).limit(100).lean(),
-    Order.find({ "subOrders.vendorId": user.id }).sort({ createdAt: -1 }).limit(30).lean()
+    Order.find({ "subOrders.vendorId": user.id }).sort({ createdAt: -1 }).limit(30).lean(),
+    VendorSettlement.find({ vendorId: user.id }).sort({ createdAt: -1 }).limit(100).populate("orderId", "orderNumber").lean()
   ]);
   const profile = Array.isArray(profileResult) ? profileResult[0] : profileResult;
   const metrics = [
     ["Total listings", products.length],
     ["Live products", products.filter((product) => product.status === "active").length],
     ["In review", products.filter((product) => product.status === "pending-review").length],
-    ["Customer orders", orders.length]
+    ["Customer orders", orders.length],
+    ["Pending payouts", `৳${settlements.filter((entry) => entry.status === "pending").reduce((sum, entry) => sum + Number(entry.netAmount), 0).toLocaleString("en-BD", { minimumFractionDigits: 2 })}`],
+    ["Paid out", `৳${settlements.filter((entry) => entry.status === "paid").reduce((sum, entry) => sum + Number(entry.netAmount), 0).toLocaleString("en-BD", { minimumFractionDigits: 2 })}`]
   ] as const;
 
   return (
@@ -101,6 +105,21 @@ export default async function VendorDashboardPage() {
             );
           })}
           {!orders.length && <p className="rounded-2xl border border-dashed border-[#e8ddd2] p-8 text-sm text-[#777487]">Customer orders will appear here after checkout.</p>}
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-2xl font-black">Settlement history</h2><p className="mt-1 text-sm text-[#777487]">Order-wise earnings after refunds and platform commission.</p></div><span className="rounded-full bg-[#fff0e3] px-3 py-1 text-xs font-bold">{settlements.length} records</span></div>
+        <div className="mt-4 space-y-3">
+          {settlements.map((settlement) => {
+            const order = settlement.orderId as unknown as { orderNumber?: string } | null;
+            return <article key={String(settlement._id)} className="rounded-2xl border border-[#f0e9e1] bg-white p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-black">{order?.orderNumber || "Order reference unavailable"}</h3><p className="mt-1 text-xs text-[#777487]">Gross ৳{Number(settlement.grossAmount).toLocaleString("en-BD", { minimumFractionDigits: 2 })} · Refund share ৳{Number(settlement.refundShare).toLocaleString("en-BD", { minimumFractionDigits: 2 })}</p></div><span className="rounded-full bg-[#fff0e3] px-3 py-1 text-xs font-bold capitalize">{settlement.status}</span></div>
+              <div className="mt-3 flex flex-wrap justify-between gap-2 border-t border-[#f0e9e1] pt-3 text-sm"><span className="text-[#777487]">Platform commission: ৳{Number(settlement.commissionAmount).toLocaleString("en-BD", { minimumFractionDigits: 2 })}</span><strong>Net payout: ৳{Number(settlement.netAmount).toLocaleString("en-BD", { minimumFractionDigits: 2 })}</strong></div>
+              {settlement.payoutReference && <p className="mt-2 break-all text-xs text-[#777487]">Payout reference: {settlement.payoutReference}</p>}
+            </article>;
+          })}
+          {!settlements.length && <p className="rounded-2xl border border-dashed border-[#e8ddd2] p-8 text-sm text-[#777487]">Your vendor settlement records will appear here after eligible orders are reconciled.</p>}
         </div>
       </section>
     </section>
