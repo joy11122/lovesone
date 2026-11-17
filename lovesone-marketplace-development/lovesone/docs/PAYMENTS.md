@@ -12,7 +12,7 @@ Set these values in the deployment provider's encrypted environment settings and
 - `SSLCOMMERZ_IS_LIVE`: `false` for sandbox (default); `true` only after the merchant account is certified for live transactions.
 - `CRON_SECRET`: long random secret used to authenticate the unpaid-order expiry job.
 
-The checkout UI exposes online payment only when the store ID, password and valid application URL are configured. Never commit real credentials or paste them into source files.
+The checkout UI exposes online payment only when the store ID, password and valid application URL are configured. SSLCommerz documents an amount range of ৳10.00–৳500,000.00 per transaction; checkout rejects totals outside that range. Never commit real credentials or paste them into source files.
 
 ## Request and verification flow
 
@@ -20,7 +20,7 @@ The checkout UI exposes online payment only when the store ID, password and vali
 2. The server calculates prices, validates stock and coupon use, reserves stock and creates the parent order plus vendor suborders in a MongoDB transaction. The order stores `paymentMethod=sslcommerz` and remains unpaid.
 3. The authenticated customer starts a payment attempt. The server locks the order to one active transaction ID and creates a hosted SSLCommerz session.
 4. The browser is redirected only to an HTTPS gateway URL on an SSLCommerz host allowlist.
-5. The success callback and IPN both call the SSLCommerz validation API from the server. The application checks final provider status, transaction ID, exact amount (to two decimal places) and BDT currency.
+5. The success callback and IPN both call the SSLCommerz validation API from the server. The application checks final provider status, transaction ID, exact amount (to two decimal places) and BDT currency. Failure/cancel redirects and stale attempts are reconciled using the provider transaction-query API; browser-supplied status is never trusted.
 6. The payment transaction and order are marked paid together in a MongoDB transaction. Repeated callbacks are idempotent. Browser redirects alone never mark an order paid.
 7. Vendors cannot process non-COD orders until payment is verified. Customers cannot cancel an order while a payment attempt is active.
 
@@ -32,7 +32,7 @@ Hosted payment attempts are short-lived. The protected endpoint `GET /api/cron/e
 Authorization: Bearer <CRON_SECRET>
 ```
 
-Configure a trusted scheduler to call this endpoint every 10 minutes. The endpoint processes at most 50 orders per invocation; repeat calls drain larger backlogs. Do not expose the cron secret in browser code.
+Configure a trusted scheduler to call this endpoint every 10 minutes. The job checks the provider transaction-query API before releasing stock, so a delayed successful callback is reconciled instead of expiring a paid order. The endpoint processes at most 50 orders per invocation; repeat calls drain larger backlogs. Do not expose the cron secret in browser code.
 
 ## Sandbox certification checklist
 
@@ -47,6 +47,6 @@ Configure a trusted scheduler to call this endpoint every 10 minutes. The endpoi
 - [ ] Confirm paid orders are not expired by the cleanup job.
 - [ ] Obtain provider approval before setting `SSLCOMMERZ_IS_LIVE=true`.
 
-## Current scope
+## Official provider references\n\n- [SSLCommerz Developer Documentation — Hosted checkout and validation](https://developer.sslcommerz.com/doc/v4/)\n- [SSLCommerz Transaction Query API](https://sandbox-gw.sslcommerz.com/doc/v4/order-query.html)\n\n## Current scope
 
 SSLCommerz is the first online provider. bKash and Nagad adapters, automated refunds, chargebacks, vendor settlements and reconciliation reporting remain separate work. A successful CI run is not proof of merchant certification or live payment readiness.
