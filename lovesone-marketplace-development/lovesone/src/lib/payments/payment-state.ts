@@ -37,7 +37,8 @@ export function isVerifiedSslCommerzPayment(input: {
     input.tranId === input.expectedTranId &&
     Number.isFinite(amount) &&
     Math.round(amount * 100) === Math.round(input.expectedAmount * 100) &&
-    (input.currency ?? "").toUpperCase() === expectedCurrency &&\n    [0, 1].includes(Number(input.riskLevel));
+    (input.currency ?? "").toUpperCase() === expectedCurrency &&
+    [0, 1].includes(Number(input.riskLevel));
 }
 
 export function createPaymentTransactionId(): string {
