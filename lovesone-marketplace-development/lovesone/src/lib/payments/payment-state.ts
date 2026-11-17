@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 export type PaymentStatus = "pending" | "initiated" | "paid" | "failed" | "cancelled" | "refunded";
 
 const transitions: Record<PaymentStatus, PaymentStatus[]> = {
@@ -33,5 +35,5 @@ export function isVerifiedSslCommerzPayment(input: {
 }
 
 export function createPaymentTransactionId(): string {
-  return `LVS-${crypto.randomUUID().replace(/-/g, "").slice(0, 24).toUpperCase()}`;
+  return `LVS-${randomUUID().replace(/-/g, "").slice(0, 24).toUpperCase()}`;
 }
