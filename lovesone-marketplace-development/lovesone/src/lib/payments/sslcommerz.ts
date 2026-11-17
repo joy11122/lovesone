@@ -1,4 +1,6 @@
-import "server-only";\n\nimport { isValidSslCommerzAmount } from "@/lib/payments/payment-state";
+import "server-only";
+
+import { isValidSslCommerzAmount } from "@/lib/payments/payment-state";
 
 export type SslCommerzCustomer = {
   name: string;
