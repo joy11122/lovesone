@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
   let customerId = "";
   let idempotencyKey = "";
   let requestFingerprint = "";
+  let couponCode = "";
 
   try {
     const session = await auth();
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "Please check your delivery details and cart." }, { status: 400 });
 
     idempotencyKey = parsed.data.idempotencyKey;
+    couponCode = parsed.data.couponCode ?? "";
     const quantities = new Map<string, { productId: string; variantId?: string; quantity: number }>();
     for (const item of parsed.data.items) {
       const key = item.productId + ":" + (item.variantId ?? "default");
@@ -189,6 +191,12 @@ export async function POST(request: NextRequest) {
       const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint").lean().catch(() => null) as unknown as { _id: unknown; idempotencyFingerprint?: string } | null;
       if (existing && existing.idempotencyFingerprint === requestFingerprint) {
         return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id) }, { status: 200 });
+      }
+    }
+    if (isDuplicateKeyError(error) && customerId && couponCode) {
+      const coupon = await Coupon.findOne({ code: couponCode }).select("_id").lean().catch(() => null) as { _id: unknown } | null;
+      if (coupon && await CouponRedemption.exists({ couponId: coupon._id, userId: customerId }).catch(() => null)) {
+        return NextResponse.json({ error: "You have already used this coupon." }, { status: 422 });
       }
     }
     if (error instanceof Error && error.message.startsWith("COUPON_")) {
