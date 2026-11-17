@@ -57,7 +57,13 @@ function getConfig(): SslCommerzConfig {
 }
 
 export function isSslCommerzConfigured(): boolean {
-  return Boolean(process.env.SSLCOMMERZ_STORE_ID?.trim() && process.env.SSLCOMMERZ_STORE_PASSWORD?.trim() && process.env.APP_URL?.trim());
+  if (!process.env.SSLCOMMERZ_STORE_ID?.trim() || !process.env.SSLCOMMERZ_STORE_PASSWORD?.trim()) return false;
+  try {
+    getPaymentAppUrl();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function getPaymentAppUrl(): string {
