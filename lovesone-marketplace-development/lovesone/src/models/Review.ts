@@ -10,7 +10,7 @@ const ReviewSchema = new Schema({
   status: { type: String, enum: ["published", "hidden"], default: "published", index: true }
 }, { timestamps: true });
 
-ReviewSchema.index({ productId: 1, customerId: 1, orderId: 1 }, { unique: true });
+ReviewSchema.index({ productId: 1, customerId: 1 }, { unique: true });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Mongoose model cache uses a dynamic model type.
 export const Review = (mongoose.models.Review as mongoose.Model<any>) || mongoose.model("Review", ReviewSchema);
