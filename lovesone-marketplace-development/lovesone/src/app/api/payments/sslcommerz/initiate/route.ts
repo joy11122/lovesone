@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       if (active && ["pending", "initiated"].includes(active.status || "") && attemptAge >= 15 * 60 * 1000) {
         const providerStatus = await reconcileSslCommerzAttempt(previousTransactionId);
         if (providerStatus === "paid") return NextResponse.json({ orderId, paymentCompleted: true });
+        if (providerStatus === "review") return NextResponse.json({ orderId, paymentReview: true });
         if (providerStatus === "pending") return NextResponse.json({ error: "The previous payment is still being confirmed. Please wait before retrying." }, { status: 409 });
         if (providerStatus === "not_found" && attemptAge < 30 * 60 * 1000) {
           return NextResponse.json({ error: "The previous payment session has not expired yet. Please retry in a few minutes." }, { status: 409 });
