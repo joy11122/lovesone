@@ -11,6 +11,7 @@ import { Order } from "@/models/Order";
 import { Coupon } from "@/models/Coupon";
 import { CouponRedemption } from "@/models/CouponRedemption";
 import { findUsableCoupon, calculateCouponDiscount } from "@/lib/coupons";
+import { isSslCommerzConfigured } from "@/lib/payments/sslcommerz";
 
 const schema = z.object({
   idempotencyKey: z.string().uuid(),
