@@ -64,6 +64,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
             customerId: session.user.id,
             status: "delivered",
             "returnRequest.status": "approved",
+            settlementLockedAt: null,
             $expr: {
               $lte: [
                 { $add: [{ $ifNull: ["$refundedAmount", 0] }, { $ifNull: ["$refundReservedAmount", 0] }, amount] },
