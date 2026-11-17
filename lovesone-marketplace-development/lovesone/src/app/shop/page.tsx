@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
+import { RecentlyViewedProducts } from "@/components/product-recommendations";
 
 export const metadata = { title: "Shop pet essentials" };
 export const dynamic = "force-dynamic";
@@ -153,6 +154,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
         {totalPages > 1 && <nav aria-label="Product pages" className="mt-9 flex flex-wrap items-center justify-center gap-2"><Link aria-disabled={currentPage <= 1} tabIndex={currentPage <= 1 ? -1 : 0} href={pageHref(Math.max(1, currentPage - 1))} className={`rounded-full border px-4 py-2 text-sm font-bold ${currentPage <= 1 ? "pointer-events-none border-[#eee5dc] text-[#b8b0aa]" : "border-[#eadfd5] hover:bg-[#fff0e3]"}`}>Previous</Link><span className="px-3 text-sm text-[#777487]">Page {currentPage} of {totalPages}</span><Link aria-disabled={currentPage >= totalPages} tabIndex={currentPage >= totalPages ? -1 : 0} href={pageHref(Math.min(totalPages, currentPage + 1))} className={`rounded-full border px-4 py-2 text-sm font-bold ${currentPage >= totalPages ? "pointer-events-none border-[#eee5dc] text-[#b8b0aa]" : "border-[#eadfd5] hover:bg-[#fff0e3]"}`}>Next</Link></nav>}
       </section>
+      <RecentlyViewedProducts />
     </main>
   );
 }
