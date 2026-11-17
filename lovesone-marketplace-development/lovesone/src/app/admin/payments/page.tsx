@@ -9,11 +9,10 @@ export const metadata = { title: "Payment reconciliation" };
 export default async function AdminPaymentReconciliationPage() {
   await requireRole(["admin", "super-admin"], "/admin/payments");
   await connectDatabase();
-  const cutoff = new Date(Date.now() - 5 * 60 * 1000);
   const transactions = await PaymentTransaction.find({
     provider: "sslcommerz",
     status: { $in: ["pending", "initiated"] },
-    createdAt: { $lt: cutoff }
+    $expr: { $lt: ["$createdAt", { $dateSubtract: { startDate: "$NOW", unit: "minute", amount: 5 } }] }
   })
     .sort({ createdAt: 1 })
     .limit(100)
