@@ -11,6 +11,7 @@ Set these values in the deployment provider's encrypted environment settings and
 - `SSLCOMMERZ_STORE_PASSWORD`: merchant store password supplied by SSLCommerz.
 - `SSLCOMMERZ_IS_LIVE`: `false` for sandbox (default); `true` only after the merchant account is certified for live transactions.
 - `CRON_SECRET`: long random secret used to authenticate the unpaid-order expiry job.
+- `PLATFORM_COMMISSION_BPS`: required before vendor settlement creation; integer basis points from `0` to `10000` (for example, `1000` means 10%). Confirm the commercial commission policy before setting this value. The value is snapshotted on each settlement; changing it later does not rewrite existing ledgers.
 
 The checkout UI exposes online payment only when the store ID, password and valid application URL are configured. SSLCommerz documents an amount range of ৳10.00–৳500,000.00 per transaction; checkout rejects totals outside that range. Never commit real credentials or paste them into source files.
 
@@ -49,4 +50,4 @@ Configure a trusted scheduler to call this endpoint every 10 minutes. The job ch
 
 ## Official provider references\n\n- [SSLCommerz Developer Documentation — Hosted checkout and validation](https://developer.sslcommerz.com/doc/v4/)\n- [SSLCommerz Transaction Query API](https://sandbox-gw.sslcommerz.com/doc/v4/order-query.html)\n\n## Current scope
 
-SSLCommerz is the first online provider. bKash and Nagad adapters, automated refunds, chargebacks, vendor settlements and reconciliation reporting remain separate work. A successful CI run is not proof of merchant certification or live payment readiness.
+SSLCommerz is the first online provider. bKash and Nagad adapters and provider-automated refund execution remain separate work. Refunds currently use an auditable manual payout workflow. Vendor settlements are recorded per order and vendor after delivery and confirmed payment; the admin must verify the external payout and record its reference. Creating a settlement locks the order against new refund requests, so resolve return/refund cases first. A successful CI run is not proof of merchant certification or live payment readiness.
