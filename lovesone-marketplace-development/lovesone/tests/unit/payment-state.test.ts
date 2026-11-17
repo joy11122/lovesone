@@ -18,8 +18,8 @@ describe("SSLCommerz validation matching", () => {
   const expected = { expectedTranId: "LVS-ABC123", expectedAmount: 1250.5, expectedCurrency: "BDT" };
 
   it("accepts only a valid matching transaction, amount and currency", () => {
-    expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "LVS-ABC123", amount: "1250.50", currency: "BDT" })).toBe(true);
-    expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALIDATED", tranId: "LVS-ABC123", amount: 1250.5, currency: "bdt" })).toBe(true);
+    expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "LVS-ABC123", amount: "1250.50", currency: "BDT", riskLevel: 0 })).toBe(true);
+    expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALIDATED", tranId: "LVS-ABC123", amount: 1250.5, currency: "bdt", riskLevel: "0" })).toBe(true);
   });
 
   it("rejects invalid status, transaction, amount and currency", () => {
@@ -27,7 +27,7 @@ describe("SSLCommerz validation matching", () => {
     expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "OTHER", amount: "1250.50", currency: "BDT" })).toBe(false);
     expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "LVS-ABC123", amount: "1.00", currency: "BDT" })).toBe(false);
     expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "LVS-ABC123", amount: "1250.50", currency: "USD" })).toBe(false);
-    expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "LVS-ABC123", amount: "not-a-number", currency: "BDT" })).toBe(false);
+    expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "LVS-ABC123", amount: "not-a-number", currency: "BDT", riskLevel: 0 })).toBe(false);\n    expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "LVS-ABC123", amount: "1250.50", currency: "BDT" })).toBe(false);\n    expect(isVerifiedSslCommerzPayment({ ...expected, status: "VALID", tranId: "LVS-ABC123", amount: "1250.50", currency: "BDT", riskLevel: 2 })).toBe(false);
   });
 });
 
