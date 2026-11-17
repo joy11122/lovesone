@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { auth } from "../../../../../../auth";
 import { connectDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
@@ -23,7 +24,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       Review.find({ productId, status: "published" }).sort({ createdAt: -1 }).limit(50)
         .populate("customerId", "name").select("rating title body createdAt customerId").lean(),
       Review.aggregate([
-        { $match: { productId: new (await import("mongoose")).default.Types.ObjectId(productId), status: "published" } },
+        { $match: { productId: new mongoose.Types.ObjectId(productId), status: "published" } },
         { $group: { _id: null, average: { $avg: "$rating" }, count: { $sum: 1 } } }
       ])
     ]);
