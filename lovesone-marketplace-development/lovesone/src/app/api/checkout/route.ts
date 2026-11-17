@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
       }
 
       const created = await Order.create([{
-        orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`;
+        orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
         customerId,
         idempotencyKey,
         idempotencyFingerprint: fingerprint,
