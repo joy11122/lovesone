@@ -13,6 +13,7 @@ const schema = z.object({
   idempotencyKey: z.string().uuid(),
   items: z.array(z.object({
     productId: z.string().regex(/^[a-f0-9]{24}$/i),
+    variantId: z.string().regex(/^[a-f0-9]{24}$/i).optional(),
     quantity: z.number().int().min(1).max(99)
   })).min(1).max(40),
   shipping: z.object({
@@ -45,16 +46,18 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "Please check your delivery details and cart." }, { status: 400 });
 
     idempotencyKey = parsed.data.idempotencyKey;
-    const quantities = new Map<string, number>();
+    const quantities = new Map<string, { productId: string; variantId?: string; quantity: number }>();
     for (const item of parsed.data.items) {
-      quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity);
+      const key = item.productId + ":" + (item.variantId ?? "default");
+      const existing = quantities.get(key);
+      quantities.set(key, { productId: item.productId, ...(item.variantId ? { variantId: item.variantId } : {}), quantity: (existing?.quantity ?? 0) + item.quantity });
     }
     if (quantities.size !== parsed.data.items.length) {
       return NextResponse.json({ error: "Remove duplicate cart lines and try again." }, { status: 400 });
     }
 
     const fingerprint = createHash("sha256").update(JSON.stringify({
-      items: [...quantities.entries()].map(([productId, quantity]) => ({ productId, quantity })).sort((a, b) => a.productId.localeCompare(b.productId)),
+      items: [...quantities.values()].sort((a, b) => a.productId.localeCompare(b.productId) || (a.variantId ?? "").localeCompare(b.variantId ?? "")),
       shipping: parsed.data.shipping
     })).digest("hex");
     requestFingerprint = fingerprint;
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
     let createdOrderId = "";
 
     await transactionSession.withTransaction(async () => {
-      const ids = [...quantities.keys()];
+      const ids = [...new Set([...quantities.values()].map((line) => line.productId))];
       const products = await Product.find({
         _id: { $in: ids },
         status: "active",
@@ -96,26 +99,35 @@ export async function POST(request: NextRequest) {
           throw new Error("PRESCRIPTION_REQUIRED");
         }
 
-        const quantity = quantities.get(String(product._id)) || 0;
+        const productLines = [...quantities.values()].filter((line) => line.productId === String(product._id));
+        const totalQuantity = productLines.reduce((sum, line) => sum + line.quantity, 0);
+        if (product.variants?.length && productLines.some((line) => !line.variantId)) throw new Error("VARIANT_REQUIRED");
         const reserved = await reserveProductStock(
           String(product._id),
           String(product.vendorId),
-          quantity,
+          totalQuantity,
           transactionSession
         );
         if (!reserved) throw new Error("INSUFFICIENT_STOCK");
 
         const vendorId = String(product.vendorId);
-        const lineTotal = Math.round(product.price * quantity * 100) / 100;
-        total += lineTotal;
         const group = grouped.get(vendorId) || { vendorId, items: [] };
-        group.items.push({
-          productId: String(product._id),
-          title: product.title,
-          quantity,
-          unitPrice: product.price,
-          lineTotal
-        });
+        for (const line of productLines) {
+          const variant = line.variantId ? product.variants?.id(line.variantId) : null;
+          if (line.variantId && !variant) throw new Error("VARIANT_UNAVAILABLE");
+          const unitPrice = variant?.price ?? product.price;
+          const lineTitle = variant ? `${product.title} — ${variant.name}` : product.title;
+          const lineTotal = Math.round(unitPrice * line.quantity * 100) / 100;
+          total += lineTotal;
+          group.items.push({
+            productId: String(product._id),
+            ...(variant ? { variantId: String(variant._id), variantName: variant.name } : {}),
+            title: lineTitle,
+            quantity: line.quantity,
+            unitPrice,
+            lineTotal
+          });
+        }
         grouped.set(vendorId, group);
       }
 
@@ -151,6 +163,9 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
       return NextResponse.json({ error: "A product does not have enough stock. Please update your quantity." }, { status: 409 });
+    }
+    if (error instanceof Error && (error.message === "VARIANT_REQUIRED" || error.message === "VARIANT_UNAVAILABLE")) {
+      return NextResponse.json({ error: "A selected product option is no longer available. Refresh your bag and try again." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "PRESCRIPTION_REQUIRED") {
       return NextResponse.json({ error: "Prescription-controlled products cannot be ordered online yet." }, { status: 422 });
