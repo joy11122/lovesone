@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
     const limited = await enforceUserRateLimit("customer-refund-request", session.user.id, 5, 24 * 60 * 60 * 1000);
     if (limited) return limited;
 
-    const prior = await Refund.findOne({ customerId: session.user.id, idempotencyKey }).lean();
+    const prior = await Refund.findOne({ customerId: session.user.id, idempotencyKey }).lean() as unknown as { _id: unknown; status: string; amount: number } | null;
     if (prior) return NextResponse.json({ message: "Refund request already received.", refund: { id: String(prior._id), status: prior.status, amount: prior.amount } });
 
     const dbSession = await mongoose.startSession();
