@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
+import { releaseCouponRedemption } from "@/lib/coupons";
 import { restoreProductStock } from "@/lib/inventory";
 import { calculateSubOrderFinancials, canTransitionVendorOrder, canVendorCancelOrder, aggregateParentOrderStatus, type VendorOrderStatus } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
@@ -83,6 +84,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
         Math.round((order.originalTotal - order.cancelledTotal + Number.EPSILON) * 100) / 100
       );
       await order.save({ session: transactionSession });
+      if (order.status === "cancelled") await releaseCouponRedemption(order.couponCode, String(order.customerId), String(order._id), transactionSession);
     });
 
     return NextResponse.json({ message: "Order status updated successfully." });

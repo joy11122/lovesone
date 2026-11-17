@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { auth } from "../../../../../../auth";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { connectDatabase } from "@/lib/db";
+import { releaseCouponRedemption } from "@/lib/coupons";
 import { restoreProductStock } from "@/lib/inventory";
 import { calculateSubOrderFinancials, canCustomerCancelOrder } from "@/lib/order-workflow";
 import { Order } from "@/models/Order";
@@ -60,6 +61,7 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ o
       order.status = "cancelled";
       order.total = 0;
       await order.save({ session: transactionSession });
+      await releaseCouponRedemption(order.couponCode, session.user.id, String(order._id), transactionSession);
     });
 
     return NextResponse.json({ message: "Your order has been cancelled and available stock restored." });
