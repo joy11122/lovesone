@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         const order = await Order.findById(parsed.data.orderId).session(dbSession);
         if (!order) throw new Error("ORDER_NOT_FOUND");
         if (order.status !== "delivered" || !["paid", "partially_refunded"].includes(order.paymentStatus)) throw new Error("ORDER_NOT_SETTLED");
+        if (Number(order.refundReservedAmount || 0) > 0) throw new Error("OPEN_REFUND");
         const subOrders = (order.subOrders || []) as SettlementSubOrder[];
         const vendors = subOrders.map((subOrder) => ({
           vendorId: String(subOrder.vendorId || ""),
