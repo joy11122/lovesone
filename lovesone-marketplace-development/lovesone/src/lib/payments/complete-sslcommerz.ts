@@ -25,7 +25,8 @@ export async function completeSslCommerzPayment(validationId: string, transactio
     amount: validation.amount,
     expectedAmount: payment.amount,
     currency: validation.currency,
-    expectedCurrency: payment.currency
+    expectedCurrency: payment.currency,
+    riskLevel: validation.risk_level
   })) {
     throw new Error("PAYMENT_VALIDATION_FAILED");
   }
