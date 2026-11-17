@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "Please check your delivery details and cart." }, { status: 400 });
 
     if (parsed.data.paymentMethod === "sslcommerz" && !session.user.email) {
-      return NextResponse.json({ error: "A verified email address is required for online payment." }, { status: 422 });
+      return NextResponse.json({ error: "An email address is required for online payment." }, { status: 422 });
     }
     if (parsed.data.paymentMethod === "sslcommerz" && !isSslCommerzConfigured()) {
       return NextResponse.json({ error: "Online payment is not configured yet. Please choose cash on delivery." }, { status: 503 });
