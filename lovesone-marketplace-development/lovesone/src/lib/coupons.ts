@@ -26,3 +26,13 @@ export function calculateCouponDiscount(coupon: { discountType: "percentage" | "
   const capped = coupon.maxDiscount !== undefined && coupon.maxDiscount !== null ? Math.min(raw, coupon.maxDiscount) : raw;
   return Math.min(subtotal, Math.max(0, Math.round(capped * 100) / 100));
 }
+
+export async function releaseCouponRedemption(code: string | null | undefined, userId: string, orderId: string, session: mongoose.ClientSession) {
+  if (!code) return;
+  const coupon = await Coupon.findOne({ code }).select("_id").session(session);
+  if (!coupon) return;
+  const redemption = await CouponRedemption.findOneAndDelete({ couponId: coupon._id, userId, orderId }).session(session);
+  if (redemption) {
+    await Coupon.updateOne({ _id: coupon._id, usageCount: { $gt: 0 } }, { $inc: { usageCount: -1 } }).session(session);
+  }
+}
