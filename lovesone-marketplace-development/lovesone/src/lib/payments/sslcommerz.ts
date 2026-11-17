@@ -39,6 +39,7 @@ export type SslCommerzValidationResponse = {
   amount?: string;
   currency?: string;
   bank_tran_id?: string;
+  risk_level?: string | number;
 };
 
 export type SslCommerzTransactionQueryResponse = {
