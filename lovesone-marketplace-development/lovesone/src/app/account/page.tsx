@@ -1,7 +1,7 @@
 import Link from "next/link";
 import mongoose from "mongoose";
 import { ReturnRequest } from "@/components/dashboard/return-request";
-import { CustomerOrderActions } from "@/components/storefront";
+import { CustomerOrderActions, RetryOnlinePayment } from "@/components/storefront";
 import { requireRole } from "@/lib/authz";
 import { connectDatabase } from "@/lib/db";
 import { LoyaltyTransaction } from "@/models/LoyaltyTransaction";
@@ -35,6 +35,6 @@ export default async function CustomerAccountPage({ searchParams }: { searchPara
     </section>
     <div className="mt-10 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Your orders</h2><p className="mt-1 text-sm text-[#777487]">Your latest 30 purchases</p></div><div className="flex flex-wrap gap-2"><Link href="/wishlist" className="rounded-full border border-[#eadfd5] px-5 py-3 text-sm font-bold">♡ Saved favourites</Link><Link href="/shop" className="btn">Continue shopping</Link></div></div>
     <div className="mt-5 space-y-3">{orders.length ? orders.map(order=><article key={String(order._id)} className="rounded-2xl border border-[#f0e9e1] bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-black">{order.orderNumber}</p><p className="mt-1 text-xs text-[#777487]">{order.createdAt.toLocaleString()}</p></div><span className="rounded-full bg-[#fff0e3] px-3 py-1 text-xs font-bold capitalize">{order.status}</span></div><div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-[#777487]">{order.subOrders.reduce((count: number, sub: unknown) => count + (typeof sub === "object" && sub !== null && "items" in sub && Array.isArray(sub.items) ? sub.items.length : 0), 0)} item lines · {order.paymentMethod.toUpperCase()}</p><div className="text-right"><strong>৳{order.total.toLocaleString("en-BD")}</strong><p className="mt-1 text-xs capitalize text-[#777487]">Payment: {order.paymentStatus}</p></div></div><ReturnRequest orderId={String(order._id)} status={order.returnRequest?.status} />
-      <CustomerOrderActions orderId={String(order._id)} status={order.status} paymentStatus={order.paymentStatus} /></article>):<div className="rounded-3xl border border-dashed border-[#e8ddd2] p-10 text-center"><p className="font-bold">Your first pet haul is waiting.</p><p className="mt-2 text-sm text-[#777487]">Explore treats, toys, food and everyday essentials.</p><Link href="/shop" className="btn mt-5">Explore the shop</Link></div>}</div>
+      <CustomerOrderActions orderId={String(order._id)} status={order.status} paymentStatus={order.paymentStatus} paymentAttemptActive={Boolean(order.paymentAttemptId)} />{order.paymentMethod === "sslcommerz" && order.paymentStatus === "pending" && order.status === "pending" && <RetryOnlinePayment orderId={String(order._id)} />}</article>):<div className="rounded-3xl border border-dashed border-[#e8ddd2] p-10 text-center"><p className="font-bold">Your first pet haul is waiting.</p><p className="mt-2 text-sm text-[#777487]">Explore treats, toys, food and everyday essentials.</p><Link href="/shop" className="btn mt-5">Explore the shop</Link></div>}</div>
   </section>;
 }
