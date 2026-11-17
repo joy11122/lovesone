@@ -13,6 +13,11 @@ const schema = z.object({
   description: z.string().trim().max(4000).default(""),
   price: z.number().positive().max(10000000),
   stock: z.number().int().min(0).max(1000000),
+  variants: z.array(z.object({
+    name: z.string().trim().min(1).max(80),
+    sku: z.string().trim().max(80).default(""),
+    price: z.number().positive().max(10000000).optional()
+  })).max(30).default([]).refine((items) => new Set(items.map((item) => item.name.toLowerCase())).size === items.length, "Variant names must be unique."),
   categorySlug: z.enum(["food", "fashion", "medicine", "grooming", "toys", "beds", "accessories", "aquariums"]),
   imageUrl: z.string().url().optional(),
   imagePublicId: z.string().trim().min(1).max(255).optional()
@@ -80,8 +85,13 @@ const updateSchema = z.object({
   productId: z.string().regex(/^[a-f0-9]{24}$/i),
   price: z.number().positive().max(10000000).optional(),
   stock: z.number().int().min(0).max(1000000).optional(),
-  description: z.string().trim().max(4000).optional()
-}).refine((data) => data.price !== undefined || data.stock !== undefined || data.description !== undefined);
+  description: z.string().trim().max(4000).optional(),
+  variants: z.array(z.object({
+    name: z.string().trim().min(1).max(80),
+    sku: z.string().trim().max(80).default(""),
+    price: z.number().positive().max(10000000).optional()
+  })).max(30).refine((items) => new Set(items.map((item) => item.name.toLowerCase())).size === items.length, "Variant names must be unique.").optional()
+}).refine((data) => data.price !== undefined || data.stock !== undefined || data.description !== undefined || data.variants !== undefined);
 
 const productIdSchema = z.object({ productId: z.string().regex(/^[a-f0-9]{24}$/i) });
 
@@ -106,17 +116,19 @@ export async function PATCH(request: NextRequest) {
       vendorId: session.user.id,
       deletedAt: null,
       status: { $in: ["active", "pending-review", "rejected", "draft"] }
-    }).select("price description status updatedAt");
+    }).select("price description variants status updatedAt");
     if (!current) return NextResponse.json({ error: "Product not found or no longer editable." }, { status: 404 });
 
     const changes: Record<string, unknown> = {};
     if (parsed.data.price !== undefined) changes.price = Math.round(parsed.data.price * 100) / 100;
     if (parsed.data.stock !== undefined) changes.stock = parsed.data.stock;
     if (parsed.data.description !== undefined) changes.description = parsed.data.description;
+    if (parsed.data.variants !== undefined) changes.variants = parsed.data.variants;
 
     const contentChanged =
       (parsed.data.price !== undefined && changes.price !== current.price) ||
-      (parsed.data.description !== undefined && parsed.data.description !== current.description);
+      (parsed.data.description !== undefined && parsed.data.description !== current.description) ||
+      (parsed.data.variants !== undefined && JSON.stringify(parsed.data.variants) !== JSON.stringify((current.variants ?? []).map((variant: { name: string; sku?: string; price?: number }) => ({ name: variant.name, sku: variant.sku ?? "", ...(variant.price !== undefined ? { price: variant.price } : {}) }))));
     if (shouldReReviewProduct(current.status, contentChanged)) changes.status = "pending-review";
 
     const updated = await Product.findOneAndUpdate({

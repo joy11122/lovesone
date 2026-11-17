@@ -10,6 +10,11 @@ const ProductSchema = new Schema({
   imagePublicId: { type: String, default: "" },
   price: { type: Number, required: true, min: 0 },
   stock: { type: Number, default: 0, min: 0 },
+  variants: [{
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    sku: { type: String, trim: true, maxlength: 80, default: "" },
+    price: { type: Number, min: 0 }
+  }],
   categorySlug: { type: String, default: "general" },
   status: { type: String, enum: ["draft", "pending-review", "active", "rejected", "archived"], default: "pending-review", index: true },
   deletedAt: { type: Date, default: null, index: true },
