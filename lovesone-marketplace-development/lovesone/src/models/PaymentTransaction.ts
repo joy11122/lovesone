@@ -8,7 +8,7 @@ const PaymentTransactionSchema = new Schema({
   validationId: { type: String, default: null },
   amount: { type: Number, required: true, min: 0 },
   currency: { type: String, default: "BDT", uppercase: true },
-  status: { type: String, enum: ["pending", "initiated", "paid", "failed", "cancelled", "refunded"], default: "pending", index: true },
+  status: { type: String, enum: ["pending", "initiated", "paid", "failed", "cancelled", "review", "refunded"], default: "pending", index: true },
   gatewayUrl: { type: String, default: null },
   bankTransactionId: { type: String, default: null },
   verifiedAt: { type: Date, default: null }
