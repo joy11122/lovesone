@@ -14,6 +14,7 @@ const OrderSchema = new Schema({
   cancelledTotal: { type: Number, min: 0, default: 0 },
   refundedAmount: { type: Number, min: 0, default: 0 },
   refundReservedAmount: { type: Number, min: 0, default: 0 },
+  settlementLockedAt: { type: Date, default: null },
   shipping: { name: { type: String, required: true }, phone: { type: String, required: true }, address: { type: String, required: true }, city: { type: String, required: true } },
   status: { type: String, default: "pending", index: true },
   paymentMethod: { type: String, default: "cod" },
