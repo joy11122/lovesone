@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 
       const grouped = new Map<string, {
         vendorId: string;
-        items: Array<{ productId: string; title: string; quantity: number; unitPrice: number; lineTotal: number }>;
+        items: Array<{ productId: string; title: string; quantity: number; unitPrice: number; lineTotal: number; variantId?: string; variantName?: string; originalLineTotal?: number; discountAmount?: number }>;
       }>();
       let total = 0;
 
