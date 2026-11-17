@@ -11,7 +11,7 @@ import { Order } from "@/models/Order";
 import { Coupon } from "@/models/Coupon";
 import { CouponRedemption } from "@/models/CouponRedemption";
 import { findUsableCoupon, calculateCouponDiscount } from "@/lib/coupons";
-import { isSslCommerzConfigured } from "@/lib/payments/sslcommerz";
+import { isSslCommerzConfigured } from "@/lib/payments/sslcommerz";\nimport { isValidSslCommerzAmount } from "@/lib/payments/payment-state";
 
 const schema = z.object({
   idempotencyKey: z.string().uuid(),
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       }
 
       const payableTotal = Math.round((total - discountAmount) * 100) / 100;
-      if (parsed.data.paymentMethod === "sslcommerz" && (payableTotal < 10 || payableTotal > 500000)) {
+      if (parsed.data.paymentMethod === "sslcommerz" && !isValidSslCommerzAmount(payableTotal)) {
         throw new Error("PAYMENT_AMOUNT_OUT_OF_RANGE");
       }
 
