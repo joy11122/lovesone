@@ -41,6 +41,12 @@ export type SslCommerzValidationResponse = {
   bank_tran_id?: string;
 };
 
+export type SslCommerzTransactionQueryResponse = {
+  APIConnect?: string;
+  no_of_trans_found?: number;
+  element?: SslCommerzValidationResponse[];
+};
+
 function getConfig(): SslCommerzConfig {
   const storeId = process.env.SSLCOMMERZ_STORE_ID?.trim();
   const storePassword = process.env.SSLCOMMERZ_STORE_PASSWORD?.trim();
@@ -83,7 +89,7 @@ async function readJson<T>(response: Response): Promise<T> {
 
 export async function initiateSslCommerzSession(input: SslCommerzSessionInput): Promise<{ gatewayUrl: string; sessionKey?: string }> {
   const config = getConfig();
-  if (!Number.isFinite(input.amount) || input.amount <= 0 || input.amount > 10000000) {
+  if (!Number.isFinite(input.amount) || input.amount < 10 || input.amount > 500000) {
     throw new Error("INVALID_PAYMENT_AMOUNT");
   }
 
@@ -150,4 +156,23 @@ export async function validateSslCommerzTransaction(validationId: string): Promi
     signal: AbortSignal.timeout(15000)
   });
   return readJson<SslCommerzValidationResponse>(response);
+}
+
+/** Queries the provider's authoritative transaction record by our transaction ID. */
+export async function querySslCommerzTransaction(transactionId: string): Promise<SslCommerzTransactionQueryResponse> {
+  if (!transactionId || transactionId.length > 50) throw new Error("INVALID_PAYMENT_TRANSACTION_ID");
+  const config = getConfig();
+  const query = new URLSearchParams({
+    tran_id: transactionId,
+    store_id: config.storeId,
+    store_passwd: config.storePassword,
+    v: "1",
+    format: "json"
+  });
+  const response = await fetch(`${config.validationUrl.replace("validationserverAPI.php", "merchantTransIDvalidationAPI.php")}?${query.toString()}`, {
+    method: "GET",
+    cache: "no-store",
+    signal: AbortSignal.timeout(15000)
+  });
+  return readJson<SslCommerzTransactionQueryResponse>(response);
 }
