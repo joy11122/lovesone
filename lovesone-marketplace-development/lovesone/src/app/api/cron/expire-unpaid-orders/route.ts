@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
+import { timingSafeEqual } from "node:crypto";
 import { connectDatabase } from "@/lib/db";
 import { releaseCouponRedemption } from "@/lib/coupons";
 import { restoreProductStock } from "@/lib/inventory";
@@ -16,17 +17,9 @@ function isAuthorized(request: NextRequest): boolean {
   const supplied = authorization.slice(7);
   const expectedBuffer = Buffer.from(secret);
   const suppliedBuffer = Buffer.from(supplied);
-  return expectedBuffer.length === suppliedBuffer.length &&
-    mongoose.mongo?.BSON?.Binary !== undefined &&
-    requireTimingSafeEqual(expectedBuffer, suppliedBuffer);
-}
-
-function requireTimingSafeEqual(left: Buffer, right: Buffer): boolean {
   // Node's constant-time comparison avoids leaking the configured cron token.
-  return timingSafeEqual(left, right);
+  return expectedBuffer.length === suppliedBuffer.length && timingSafeEqual(expectedBuffer, suppliedBuffer);
 }
-
-import { timingSafeEqual } from "node:crypto";
 
 async function expireUnpaidOrders(request: NextRequest) {
   if (!process.env.CRON_SECRET) return NextResponse.json({ error: "Cron job is not configured." }, { status: 503 });
@@ -44,6 +37,7 @@ async function expireUnpaidOrders(request: NextRequest) {
   let expired = 0;
   for (const candidate of candidates) {
     const session = await mongoose.startSession();
+    let didExpire = false;
     try {
       await session.withTransaction(async () => {
         const order = await Order.findOne({
@@ -56,6 +50,7 @@ async function expireUnpaidOrders(request: NextRequest) {
         if (!order) return;
 
         const subOrders = order.subOrders as VendorSubOrder[];
+        if (subOrders.some((subOrder) => !["pending", "cancelled"].includes(subOrder.status))) return;
         for (const subOrder of subOrders) {
           if (subOrder.status === "cancelled") continue;
           for (const item of subOrder.items || []) {
@@ -80,8 +75,9 @@ async function expireUnpaidOrders(request: NextRequest) {
           { session }
         );
         await releaseCouponRedemption(order.couponCode, String(order.customerId), String(order._id), session);
-        expired += 1;
+        didExpire = true;
       });
+      if (didExpire) expired += 1;
     } finally {
       await session.endSession();
     }
