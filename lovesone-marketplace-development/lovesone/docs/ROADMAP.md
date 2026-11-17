@@ -41,9 +41,9 @@ This document reflects the current repository implementation. A feature is marke
 - [x] Customer order history, pre-shipment COD cancellation with transactional stock restoration and delivered-order return request
 - [ ] bKash server-side payment initiation, execute/query verification and callback handling
 - [ ] Nagad server-side payment initiation and provider-side verification
-- [ ] SSLCommerz hosted checkout, IPN and validation API integration
+- [x] SSLCommerz hosted checkout, IPN, validation API and transaction-query integration (sandbox certification pending)
 - [ ] Sandbox testing, provider certification and production callback configuration
-- [ ] Stale payment reservation expiry and provider reconciliation
+- [x] Stale payment reservation expiry endpoint and provider reconciliation (scheduler configuration pending)
 - [ ] Refunds, chargebacks, commission ledger and vendor settlements
 - [ ] Courier contracts, serviceability and rate tables
 
@@ -87,8 +87,8 @@ This document reflects the current repository implementation. A feature is marke
 - Legal review for medicines, prescription products, vendor identity, tax, returns and consumer disclosures
 
 ## Important operational boundaries
-- COD checkout is the only payment method currently implemented.
+- COD and configured SSLCommerz hosted checkout are implemented in source; sandbox certification and production credentials remain required before enabling live payment.
 - Product stock is decremented at COD order creation. Cancellation/restock operations need a complete audited order lifecycle before public launch.
 - Admin return approval records a decision only; it does not refund or settle money.
 - Prescription-controlled medicine listings remain blocked at checkout.
-- Do not enable online payments or claim production readiness until provider callbacks are verified against official provider APIs and staging transactions.
+- Do not enable live online payments or claim production readiness until SSLCommerz callbacks, IPN, replay handling and expiry reconciliation are verified with official sandbox transactions. bKash and Nagad remain unimplemented.
