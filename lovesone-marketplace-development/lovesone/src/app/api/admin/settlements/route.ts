@@ -59,6 +59,13 @@ export async function POST(request: NextRequest) {
           return;
         }
 
+        const lock = await Order.updateOne(
+          { _id: order._id, settlementLockedAt: null },
+          { $set: { settlementLockedAt: new Date() } },
+          { session: dbSession }
+        );
+        if (lock.modifiedCount !== 1) throw new Error("SETTLEMENT_LOCKED");
+
         const shares = allocateVendorRefundShares(vendors.map((entry) => entry.gross), Number(order.refundedAmount || 0));
         if (!shares) throw new Error("REFUND_ALLOCATION_INVALID");
         const documents = vendors.map((vendor, index) => {
@@ -87,6 +94,7 @@ export async function POST(request: NextRequest) {
       if (error.message === "NO_VENDOR_BALANCE" || error.message === "INVALID_VENDOR_LINES") return NextResponse.json({ error: "This order has no valid vendor settlement lines." }, { status: 409 });
       if (error.message === "OPEN_REFUND") return NextResponse.json({ error: "Resolve all open refund requests before creating vendor settlements." }, { status: 409 });
       if (error.message === "PARTIAL_SETTLEMENT_EXISTS") return NextResponse.json({ error: "A partial settlement ledger already exists. Contact support; do not retry payout manually." }, { status: 409 });
+      if (error.message === "SETTLEMENT_LOCKED") return NextResponse.json({ error: "This order has already been locked for settlement." }, { status: 409 });
       if (error.message === "REFUND_ALLOCATION_INVALID" || error.message === "SETTLEMENT_CALCULATION_FAILED") return NextResponse.json({ error: "The refund allocation or settlement calculation is invalid." }, { status: 409 });
       if ("code" in error && error.code === 11000) return NextResponse.json({ error: "A settlement already exists for one or more vendors on this order." }, { status: 409 });
     }
