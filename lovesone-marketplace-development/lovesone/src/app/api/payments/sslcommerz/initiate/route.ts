@@ -6,6 +6,7 @@ import { connectDatabase } from "@/lib/db";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { getPaymentAppUrl, initiateSslCommerzSession, isSslCommerzConfigured } from "@/lib/payments/sslcommerz";
 import { createPaymentTransactionId } from "@/lib/payments/payment-state";
+import { reconcileSslCommerzAttempt } from "@/lib/payments/complete-sslcommerz";
 import { Order } from "@/models/Order";
 import { PaymentTransaction } from "@/models/PaymentTransaction";
 
@@ -45,16 +46,28 @@ export async function POST(request: NextRequest) {
     if (order.status !== "pending" || order.paymentStatus !== "pending") return NextResponse.json({ error: "This order is not eligible for payment." }, { status: 409 });
 
     if (order.paymentAttemptId) {
-      const active = await PaymentTransaction.findOne({ transactionId: order.paymentAttemptId, orderId }).select("gatewayUrl status createdAt").lean() as { gatewayUrl?: string; status?: string; createdAt?: Date } | null;
+      const previousTransactionId = order.paymentAttemptId;
+      const active = await PaymentTransaction.findOne({ transactionId: previousTransactionId, orderId }).select("gatewayUrl status createdAt").lean() as { gatewayUrl?: string; status?: string; createdAt?: Date } | null;
       const attemptAge = active?.createdAt ? Date.now() - new Date(active.createdAt).getTime() : 0;
       if (active?.status === "initiated" && active.gatewayUrl && attemptAge < 15 * 60 * 1000) {
         return NextResponse.json({ gatewayUrl: active.gatewayUrl, orderId });
       }
-      if (active && attemptAge >= 15 * 60 * 1000) {
-        await PaymentTransaction.updateOne({ transactionId: order.paymentAttemptId, status: { $in: ["pending", "initiated"] } }, { $set: { status: "cancelled" } });
-        await Order.updateOne({ _id: orderId, paymentAttemptId: order.paymentAttemptId }, { $set: { paymentAttemptId: null } });
-      } else {
+      if (active && ["pending", "initiated"].includes(active.status || "") && attemptAge < 15 * 60 * 1000) {
         return NextResponse.json({ error: "A payment attempt is already being prepared. Please wait and retry." }, { status: 409 });
+      }
+      if (active && ["pending", "initiated"].includes(active.status || "") && attemptAge >= 15 * 60 * 1000) {
+        const providerStatus = await reconcileSslCommerzAttempt(previousTransactionId);
+        if (providerStatus === "paid") return NextResponse.json({ orderId, paymentCompleted: true });
+        if (providerStatus === "pending") return NextResponse.json({ error: "The previous payment is still being confirmed. Please wait before retrying." }, { status: 409 });
+        if (providerStatus === "not_found" && attemptAge < 30 * 60 * 1000) {
+          return NextResponse.json({ error: "The previous payment session has not expired yet. Please retry in a few minutes." }, { status: 409 });
+        }
+        if (providerStatus === "not_found") {
+          await PaymentTransaction.updateOne({ transactionId: previousTransactionId, status: { $in: ["pending", "initiated"] } }, { $set: { status: "cancelled" } });
+          await Order.updateOne({ _id: orderId, paymentAttemptId: previousTransactionId }, { $set: { paymentAttemptId: null } });
+        }
+      } else {
+        await Order.updateOne({ _id: orderId, paymentAttemptId: previousTransactionId }, { $set: { paymentAttemptId: null } });
       }
     }
 
