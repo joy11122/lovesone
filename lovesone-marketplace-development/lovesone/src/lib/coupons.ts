@@ -2,6 +2,7 @@ import "server-only";
 import type mongoose from "mongoose";
 import { Coupon } from "@/models/Coupon";
 import { CouponRedemption } from "@/models/CouponRedemption";
+export { calculateCouponDiscount } from "@/lib/coupon-math";
 
 export async function findUsableCoupon(code: string, userId: string, subtotal: number, session?: mongoose.ClientSession) {
   const normalizedCode = code.trim().toUpperCase();
@@ -19,13 +20,6 @@ export async function findUsableCoupon(code: string, userId: string, subtotal: n
   return coupon;
 }
 
-export function calculateCouponDiscount(coupon: { discountType: "percentage" | "fixed"; discountValue: number; maxDiscount?: number | null }, subtotal: number) {
-  const raw = coupon.discountType === "percentage"
-    ? subtotal * coupon.discountValue / 100
-    : coupon.discountValue;
-  const capped = coupon.maxDiscount !== undefined && coupon.maxDiscount !== null ? Math.min(raw, coupon.maxDiscount) : raw;
-  return Math.min(subtotal, Math.max(0, Math.round(capped * 100) / 100));
-}
 
 export async function releaseCouponRedemption(code: string | null | undefined, userId: string, orderId: string, session: mongoose.ClientSession) {
   if (!code) return;
