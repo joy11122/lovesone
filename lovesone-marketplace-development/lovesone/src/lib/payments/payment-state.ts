@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 
-export type PaymentStatus = "pending" | "initiated" | "paid" | "failed" | "cancelled" | "refunded";
+export type PaymentStatus = "pending" | "initiated" | "paid" | "failed" | "cancelled" | "review" | "refunded";
 
 const transitions: Record<PaymentStatus, PaymentStatus[]> = {
   pending: ["initiated", "failed", "cancelled"],
-  initiated: ["paid", "failed", "cancelled"],
+  initiated: ["paid", "failed", "cancelled", "review"],
   paid: ["refunded"],
   failed: ["initiated", "cancelled"],
   cancelled: [],
+  review: ["paid", "failed"],
   refunded: []
 };
 
