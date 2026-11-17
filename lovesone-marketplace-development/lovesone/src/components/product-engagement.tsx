@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
-type WishlistProduct = { _id: string; slug: string; title: string; price: number; stock: number; imageUrl?: string; categorySlug?: string };
+export type WishlistProduct = { _id: string; slug: string; title: string; price: number; stock: number; imageUrl?: string; categorySlug?: string };
 type ReviewItem = { _id: string; rating: number; title: string; body: string; createdAt: string; customerId?: { name?: string } | string };
 
 export function WishlistButton({ productId }: { productId: string }) {
