@@ -5,7 +5,9 @@ describe("payment status transitions", () => {
   it("allows only safe forward payment transitions", () => {
     expect(canTransitionPaymentStatus("pending", "initiated")).toBe(true);
     expect(canTransitionPaymentStatus("initiated", "paid")).toBe(true);
-    expect(canTransitionPaymentStatus("initiated", "failed")).toBe(true);\n    expect(canTransitionPaymentStatus("initiated", "review")).toBe(true);\n    expect(canTransitionPaymentStatus("review", "paid")).toBe(true);
+    expect(canTransitionPaymentStatus("initiated", "failed")).toBe(true);
+    expect(canTransitionPaymentStatus("initiated", "review")).toBe(true);
+    expect(canTransitionPaymentStatus("review", "paid")).toBe(true);
     expect(canTransitionPaymentStatus("paid", "failed")).toBe(false);
     expect(canTransitionPaymentStatus("refunded", "paid")).toBe(false);
     expect(canTransitionPaymentStatus("unknown", "paid")).toBe(false);
