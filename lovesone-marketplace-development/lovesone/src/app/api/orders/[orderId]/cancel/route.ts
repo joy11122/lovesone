@@ -32,7 +32,7 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ o
       if (!order) throw new Error("ORDER_NOT_FOUND");
 
       const subOrders = order.subOrders as VendorSubOrder[];
-      if (!canCustomerCancelOrder(subOrders.map((item) => item.status), order.paymentStatus)) {
+      if (order.paymentAttemptId || !canCustomerCancelOrder(subOrders.map((item) => item.status), order.paymentStatus)) {
         throw new Error("CANCELLATION_NOT_ALLOWED");
       }
 

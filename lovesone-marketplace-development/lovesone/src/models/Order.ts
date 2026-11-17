@@ -16,6 +16,7 @@ const OrderSchema = new Schema({
   status: { type: String, default: "pending", index: true },
   paymentMethod: { type: String, default: "cod" },
   paymentStatus: { type: String, default: "pending", index: true },
+  paymentAttemptId: { type: String, default: null, index: true },
   returnRequest: {
     status: { type: String, default: null },
     reason: { type: String, default: "" },

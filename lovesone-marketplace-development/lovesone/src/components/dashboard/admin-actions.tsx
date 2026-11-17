@@ -35,3 +35,26 @@ export function ReviewAction({ productId, medicine }: { productId: string; medic
   }
   return <div className="space-y-3">{medicine && <label className="block text-xs text-[#777487]">Compliance reference<input value={reference} onChange={event=>setReference(event.target.value)} className="mt-1 block w-full rounded-xl border border-[#f0e9e1] px-3 py-2" placeholder="Verified approval reference" /></label>}<div className="flex flex-wrap items-center gap-2"><button type="button" className="btn" disabled={busy} onClick={()=>decide("approve")}>Approve product</button><button type="button" className="rounded-full border border-[#e8ddd2] px-4 py-3 text-sm font-bold" disabled={busy} onClick={()=>decide("reject")}>Reject</button>{message && <span role="status" className="text-xs text-[#777487]">{message}</span>}</div></div>;
 }
+
+export function PaymentReviewAction({ transactionId }: { transactionId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  async function approve() {
+    if (!window.confirm("Confirm that you have manually verified this payment with SSLCommerz before releasing the order to the seller?")) return;
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch(`/api/admin/payments/${encodeURIComponent(transactionId)}/review`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to approve payment");
+      setMessage("Payment approved. Refresh to update the queue.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to approve payment");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <div className="mt-4 flex flex-wrap items-center gap-3">
+    <button type="button" className="btn" disabled={busy} onClick={approve}>{busy ? "Verifying…" : "Approve after manual verification"}</button>
+    {message && <span role="status" className="text-xs text-[#777487]">{message}</span>}
+  </div>;
+}

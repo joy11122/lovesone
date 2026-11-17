@@ -11,6 +11,8 @@ import { Order } from "@/models/Order";
 import { Coupon } from "@/models/Coupon";
 import { CouponRedemption } from "@/models/CouponRedemption";
 import { findUsableCoupon, calculateCouponDiscount } from "@/lib/coupons";
+import { isSslCommerzConfigured } from "@/lib/payments/sslcommerz";
+import { isValidSslCommerzAmount } from "@/lib/payments/payment-state";
 
 const schema = z.object({
   idempotencyKey: z.string().uuid(),
@@ -26,7 +28,7 @@ const schema = z.object({
     city: z.string().trim().min(2).max(80)
   }),
   couponCode: z.string().trim().toUpperCase().min(3).max(40).optional(),
-  paymentMethod: z.literal("cod")
+  paymentMethod: z.enum(["cod", "sslcommerz"])
 });
 
 function isDuplicateKeyError(error: unknown): boolean {
@@ -50,6 +52,13 @@ export async function POST(request: NextRequest) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Please check your delivery details and cart." }, { status: 400 });
 
+    if (parsed.data.paymentMethod === "sslcommerz" && !session.user.email) {
+      return NextResponse.json({ error: "An email address is required for online payment." }, { status: 422 });
+    }
+    if (parsed.data.paymentMethod === "sslcommerz" && !isSslCommerzConfigured()) {
+      return NextResponse.json({ error: "Online payment is not configured yet. Please choose cash on delivery." }, { status: 503 });
+    }
+
     idempotencyKey = parsed.data.idempotencyKey;
     couponCode = parsed.data.couponCode ?? "";
     const quantities = new Map<string, { productId: string; variantId?: string; quantity: number }>();
@@ -70,12 +79,12 @@ export async function POST(request: NextRequest) {
     requestFingerprint = fingerprint;
 
     await connectDatabase();
-    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint").lean() as unknown as { _id: unknown; idempotencyFingerprint?: string } | null;
+    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint paymentMethod paymentStatus").lean() as unknown as { _id: unknown; idempotencyFingerprint?: string; paymentMethod?: string; paymentStatus?: string } | null;
     if (previousOrder) {
       if (previousOrder.idempotencyFingerprint !== fingerprint) {
         return NextResponse.json({ error: "This checkout key was already used with different order details. Please retry checkout." }, { status: 409 });
       }
-      return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id) }, { status: 200 });
+      return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id), paymentMethod: previousOrder.paymentMethod ?? "cod", paymentCompleted: previousOrder.paymentStatus === "paid" }, { status: 200 });
     }
 
     const limited = await enforceUserRateLimit("checkout", customerId, 8, 15 * 60 * 1000);
@@ -162,20 +171,25 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      const payableTotal = Math.round((total - discountAmount) * 100) / 100;
+      if (parsed.data.paymentMethod === "sslcommerz" && !isValidSslCommerzAmount(payableTotal)) {
+        throw new Error("PAYMENT_AMOUNT_OUT_OF_RANGE");
+      }
+
       const created = await Order.create([{
         orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
         customerId,
         idempotencyKey,
         idempotencyFingerprint: fingerprint,
         subOrders: [...grouped.values()].map((group) => ({ ...group, status: "pending" })),
-        total: Math.round((total - discountAmount) * 100) / 100,
+        total: payableTotal,
         subtotal: Math.round(total * 100) / 100,
-        originalTotal: Math.round((total - discountAmount) * 100) / 100,
+        originalTotal: payableTotal,
         discountTotal: discountAmount,
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
         cancelledTotal: 0,
         shipping: parsed.data.shipping,
-        paymentMethod: "cod",
+        paymentMethod: parsed.data.paymentMethod,
         paymentStatus: "pending",
         status: "pending"
       }], { session: transactionSession });
@@ -185,12 +199,12 @@ export async function POST(request: NextRequest) {
       if (appliedCoupon) await CouponRedemption.create([{ couponId: appliedCoupon._id, userId: customerId, orderId: order._id, discountAmount }], { session: transactionSession });
     });
 
-    return NextResponse.json({ message: "Order placed successfully.", orderId: createdOrderId }, { status: 201 });
+    return NextResponse.json({ message: "Order placed successfully.", orderId: createdOrderId, paymentMethod: parsed.data.paymentMethod }, { status: 201 });
   } catch (error) {
     if (isDuplicateKeyError(error) && customerId && idempotencyKey) {
-      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint").lean().catch(() => null) as unknown as { _id: unknown; idempotencyFingerprint?: string } | null;
+      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint paymentMethod paymentStatus").lean().catch(() => null) as unknown as { _id: unknown; idempotencyFingerprint?: string; paymentMethod?: string; paymentStatus?: string } | null;
       if (existing && existing.idempotencyFingerprint === requestFingerprint) {
-        return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id) }, { status: 200 });
+        return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id), paymentMethod: existing.paymentMethod ?? "cod", paymentCompleted: existing.paymentStatus === "paid" }, { status: 200 });
       }
     }
     if (isDuplicateKeyError(error) && customerId && couponCode) {
@@ -217,6 +231,9 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof Error && (error.message === "VARIANT_REQUIRED" || error.message === "VARIANT_UNAVAILABLE")) {
       return NextResponse.json({ error: "A selected product option is no longer available. Refresh your bag and try again." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "PAYMENT_AMOUNT_OUT_OF_RANGE") {
+      return NextResponse.json({ error: "SSLCommerz supports order totals from ৳10 to ৳500,000. Please choose cash on delivery for this order." }, { status: 422 });
     }
     if (error instanceof Error && error.message === "PRESCRIPTION_REQUIRED") {
       return NextResponse.json({ error: "Prescription-controlled products cannot be ordered online yet." }, { status: 422 });
