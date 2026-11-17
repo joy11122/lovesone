@@ -11,7 +11,9 @@ const PaymentTransactionSchema = new Schema({
   status: { type: String, enum: ["pending", "initiated", "paid", "failed", "cancelled", "review", "refunded"], default: "pending", index: true },
   gatewayUrl: { type: String, default: null },
   bankTransactionId: { type: String, default: null },
-  verifiedAt: { type: Date, default: null }
+  verifiedAt: { type: Date, default: null },
+  reviewedAt: { type: Date, default: null },
+  reviewedBy: { type: Schema.Types.ObjectId, ref: "User", default: null }
 }, { timestamps: true });
 
 PaymentTransactionSchema.index({ orderId: 1, createdAt: -1 });
