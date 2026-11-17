@@ -16,7 +16,8 @@ export async function completeSslCommerzPayment(validationId: string, transactio
     .lean() as unknown as { orderId: unknown; amount: number; currency: string; status: string } | null;
   if (!payment) throw new Error("PAYMENT_NOT_FOUND");
 
-  const validation = await validateSslCommerzTransaction(validationId);\n  if (validation.val_id && validation.val_id !== validationId) throw new Error("PAYMENT_VALIDATION_ID_MISMATCH");
+  const validation = await validateSslCommerzTransaction(validationId);
+  if (validation.val_id && validation.val_id !== validationId) throw new Error("PAYMENT_VALIDATION_ID_MISMATCH");
   if (!isVerifiedSslCommerzPayment({
     status: validation.status,
     tranId: validation.tran_id,
