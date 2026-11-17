@@ -22,7 +22,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
   const category = categoryDetails[product.categorySlug] ?? { label: product.categorySlug, icon: "🐾" };
   const relatedProducts = await Product.find({ _id: { $ne: product._id }, categorySlug: product.categorySlug, status: "active", deletedAt: null })
-    .sort({ createdAt: -1, _id: -1 }).limit(4).select("slug title categorySlug imageUrl price stock").lean() as Array<{ _id: unknown; slug: string; title: string; categorySlug: string; imageUrl?: string; price: number; stock: number }>;
+    .sort({ createdAt: -1, _id: -1 }).limit(4).select("slug title categorySlug imageUrl price stock").lean() as unknown as Array<{ _id: unknown; slug: string; title: string; categorySlug: string; imageUrl?: string; price: number; stock: number }>;
 
   return (
     <main className="container py-10 sm:py-14">
