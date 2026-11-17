@@ -1,4 +1,5 @@
 import Link from "next/link";
+import mongoose from "mongoose";
 import { ReturnRequest } from "@/components/dashboard/return-request";
 import { CustomerOrderActions } from "@/components/storefront";
 import { requireRole } from "@/lib/authz";
@@ -14,8 +15,8 @@ export default async function CustomerAccountPage() {
   const [orders, loyaltyBalanceRows, loyaltyTransactions] = await Promise.all([
     Order.find({ customerId: user.id }).sort({ createdAt: -1 }).limit(30).lean(),
     LoyaltyTransaction.aggregate([
-      { $match: { userId: new (await import("mongoose")).default.Types.ObjectId(user.id) } },
-      { $group: { _id: null, balance: { $sum: "$points" } } }
+      { $match: { userId: new mongoose.Types.ObjectId(user.id) } },
+      { $group: { _id: null, balance: { $sum: { $cond: [{ $eq: ["$type", "redeemed"] }, { $multiply: ["$points", -1] }, "$points"] } } } }
     ]),
     LoyaltyTransaction.find({ userId: user.id }).sort({ createdAt: -1 }).limit(10).select("points type description createdAt").lean()
   ]);
