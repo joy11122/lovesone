@@ -1,4 +1,4 @@
-import "server-only";
+import "server-only";\n\nimport { isValidSslCommerzAmount } from "@/lib/payments/payment-state";
 
 export type SslCommerzCustomer = {
   name: string;
@@ -90,7 +90,7 @@ async function readJson<T>(response: Response): Promise<T> {
 
 export async function initiateSslCommerzSession(input: SslCommerzSessionInput): Promise<{ gatewayUrl: string; sessionKey?: string }> {
   const config = getConfig();
-  if (!Number.isFinite(input.amount) || input.amount < 10 || input.amount > 500000) {
+  if (!isValidSslCommerzAmount(input.amount)) {
     throw new Error("INVALID_PAYMENT_AMOUNT");
   }
 
