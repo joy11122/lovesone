@@ -12,7 +12,7 @@ export default async function AdminPaymentReconciliationPage() {
   const transactions = await PaymentTransaction.find({
     provider: "sslcommerz",
     status: { $in: ["pending", "initiated"] },
-    $expr: { $lt: ["$createdAt", { $dateSubtract: { startDate: "$NOW", unit: "minute", amount: 5 } }] }
+    $expr: { $lt: ["$createdAt", { $dateSubtract: { startDate: "$$NOW", unit: "minute", amount: 5 } }] }
   })
     .sort({ createdAt: 1 })
     .limit(100)
