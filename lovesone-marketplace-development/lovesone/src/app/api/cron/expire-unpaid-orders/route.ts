@@ -6,6 +6,7 @@ import { releaseCouponRedemption } from "@/lib/coupons";
 import { restoreProductStock } from "@/lib/inventory";
 import { Order } from "@/models/Order";
 import { PaymentTransaction } from "@/models/PaymentTransaction";
+import { reconcileSslCommerzAttempt } from "@/lib/payments/complete-sslcommerz";
 
 type OrderLine = { productId: string; quantity: number };
 type VendorSubOrder = { vendorId: string; status: string; items: OrderLine[]; cancelledAt?: Date };
@@ -32,10 +33,19 @@ async function expireUnpaidOrders(request: NextRequest) {
     paymentStatus: "pending",
     status: "pending",
     createdAt: { $lt: cutoff }
-  }).select("_id").limit(50).lean() as unknown as Array<{ _id: unknown }>;
+  }).select("_id paymentAttemptId").limit(50).lean() as unknown as Array<{ _id: unknown; paymentAttemptId?: string | null }>;
 
   let expired = 0;
   for (const candidate of candidates) {
+    if (candidate.paymentAttemptId) {
+      try {
+        const providerStatus = await reconcileSslCommerzAttempt(candidate.paymentAttemptId);
+        if (providerStatus === "paid" || providerStatus === "pending") continue;
+      } catch (error) {
+        console.error("Skipping unpaid order expiry because provider reconciliation failed", error);
+        continue;
+      }
+    }
     const session = await mongoose.startSession();
     let didExpire = false;
     try {
