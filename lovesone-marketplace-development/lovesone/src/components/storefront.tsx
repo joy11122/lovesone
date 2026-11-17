@@ -83,11 +83,12 @@ export function CheckoutForm({onlinePaymentEnabled=false}:{onlinePaymentEnabled?
   if(couponCode.trim()&&(couponDiscount===null||couponFingerprint!==cartFingerprint)){setMessage("Apply your coupon again before placing the order.");return;}
   setBusy(true);setMessage("");
   const appliedCode=couponDiscount!==null?couponCode.trim().toUpperCase():undefined;
-  const fingerprint=JSON.stringify({items:items.map(x=>({productId:x.productId,variantId:x.variantId??"",quantity:x.quantity})).sort((a,b)=>a.productId.localeCompare(b.productId)||(a.variantId??"").localeCompare(b.variantId??"")),shipping:{name,phone,address,city},couponCode:appliedCode??"",paymentMethod});
+  const fingerprint=JSON.stringify({items:items.map(x=>({productId:x.productId,variantId:x.variantId??"",quantity:x.quantity})).sort((a,b)=>a.productId.localeCompare(b.productId)||(a.variantId??"").localeCompare(b.variantId??"")),shipping:{name,phone,address,city},couponCode:appliedCode??""});
   const requestKey=idempotencyRef.current?.fingerprint===fingerprint?idempotencyRef.current.key:crypto.randomUUID();idempotencyRef.current={fingerprint,key:requestKey};
   try{
    const res=await fetch("/api/checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idempotencyKey:requestKey,items:items.map(x=>({productId:x.productId,...(x.variantId?{variantId:x.variantId}:{}),quantity:x.quantity})),shipping:{name,phone,address,city},...(appliedCode?{couponCode:appliedCode}:{}),paymentMethod})});
    const data=await res.json();if(!res.ok)throw new Error(data.error||"Checkout failed");
+   if(data.paymentCompleted){clear();router.push(`/order/success?orderId=${encodeURIComponent(data.orderId)}`);router.refresh();return;}
    if(data.paymentMethod==="sslcommerz"){
     const paymentResponse=await fetch("/api/payments/sslcommerz/initiate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:data.orderId})});
     const paymentData=await paymentResponse.json();if(!paymentResponse.ok)throw new Error(paymentData.error||"Could not start online payment.");
