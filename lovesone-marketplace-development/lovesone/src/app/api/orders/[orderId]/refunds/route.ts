@@ -53,7 +53,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
         }
         const amount = Math.round(parsed.data.amount * 100) / 100;
         const payment = order.paymentMethod === "sslcommerz"
-          ? await PaymentTransaction.findOne({ orderId: order._id, customerId: session.user.id, provider: "sslcommerz", status: "paid" }).sort({ createdAt: -1 }).session(dbSession)
+          ? await PaymentTransaction.findOne({ orderId: order._id, customerId: session.user.id, provider: "sslcommerz", status: { $in: ["paid", "partially_refunded"] } }).sort({ createdAt: -1 }).session(dbSession)
           : null;
         if (order.paymentMethod === "sslcommerz" && !payment) throw new Error("PAYMENT_NOT_FOUND");
 
