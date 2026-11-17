@@ -59,6 +59,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ r
           );
           if (!order) throw new Error("REFUND_RESERVATION_MISSING");
 
+          order.paymentStatus = Number(order.refundedAmount) >= Number(order.total) ? "refunded" : "partially_refunded";
+          await order.save({ session: dbSession });
+
           if (refund.paymentTransactionId) {
             const payment = await PaymentTransaction.findById(refund.paymentTransactionId).session(dbSession);
             if (!payment || !["paid", "partially_refunded"].includes(payment.status)) throw new Error("PAYMENT_NOT_REFUNDABLE");
