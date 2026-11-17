@@ -13,9 +13,9 @@ export async function POST(request: Request) {
       const transaction = await PaymentTransaction.findOne({ transactionId }).select("orderId").lean() as { orderId?: unknown } | null;
       if (transaction?.orderId) return NextResponse.redirect(new URL(`/order/success?orderId=${encodeURIComponent(String(transaction.orderId))}`, getPaymentAppUrl()), 303);
     }
-    return NextResponse.redirect(new URL(`/checkout?payment=${status}`, getPaymentAppUrl()), 303);
+    return NextResponse.redirect(new URL(`/account?payment=${status}`, getPaymentAppUrl()), 303);
   } catch (error) {
     console.error("SSLCommerz cancel callback reconciliation failed", error);
-    return NextResponse.redirect(new URL("/checkout?payment=pending", getPaymentAppUrl()), 303);
+    return NextResponse.redirect(new URL("/account?payment=pending", getPaymentAppUrl()), 303;
   }
 }
