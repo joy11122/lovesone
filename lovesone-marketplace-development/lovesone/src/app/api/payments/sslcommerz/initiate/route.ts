@@ -45,9 +45,17 @@ export async function POST(request: NextRequest) {
     if (order.status !== "pending" || order.paymentStatus !== "pending") return NextResponse.json({ error: "This order is not eligible for payment." }, { status: 409 });
 
     if (order.paymentAttemptId) {
-      const active = await PaymentTransaction.findOne({ transactionId: order.paymentAttemptId, orderId, status: "initiated" }).select("gatewayUrl").lean() as { gatewayUrl?: string } | null;
-      if (active?.gatewayUrl) return NextResponse.json({ gatewayUrl: active.gatewayUrl, orderId });
-      return NextResponse.json({ error: "A payment attempt is already being prepared. Please wait and retry." }, { status: 409 });
+      const active = await PaymentTransaction.findOne({ transactionId: order.paymentAttemptId, orderId }).select("gatewayUrl status createdAt").lean() as { gatewayUrl?: string; status?: string; createdAt?: Date } | null;
+      const attemptAge = active?.createdAt ? Date.now() - new Date(active.createdAt).getTime() : 0;
+      if (active?.status === "initiated" && active.gatewayUrl && attemptAge < 15 * 60 * 1000) {
+        return NextResponse.json({ gatewayUrl: active.gatewayUrl, orderId });
+      }
+      if (active && attemptAge >= 15 * 60 * 1000) {
+        await PaymentTransaction.updateOne({ transactionId: order.paymentAttemptId, status: { $in: ["pending", "initiated"] } }, { $set: { status: "cancelled" } });
+        await Order.updateOne({ _id: orderId, paymentAttemptId: order.paymentAttemptId }, { $set: { paymentAttemptId: null } });
+      } else {
+        return NextResponse.json({ error: "A payment attempt is already being prepared. Please wait and retry." }, { status: 409 });
+      }
     }
 
     transactionId = createPaymentTransactionId();
