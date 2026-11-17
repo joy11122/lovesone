@@ -73,18 +73,17 @@ export async function POST(request: NextRequest) {
     const fingerprint = createHash("sha256").update(JSON.stringify({
       items: [...quantities.values()].sort((a, b) => a.productId.localeCompare(b.productId) || (a.variantId ?? "").localeCompare(b.variantId ?? "")),
       shipping: parsed.data.shipping,
-      couponCode: parsed.data.couponCode ?? "",
-      paymentMethod: parsed.data.paymentMethod
+      couponCode: parsed.data.couponCode ?? ""
     })).digest("hex");
     requestFingerprint = fingerprint;
 
     await connectDatabase();
-    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint paymentMethod").lean() as unknown as { _id: unknown; idempotencyFingerprint?: string; paymentMethod?: string } | null;
+    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint paymentMethod paymentStatus").lean() as unknown as { _id: unknown; idempotencyFingerprint?: string; paymentMethod?: string; paymentStatus?: string } | null;
     if (previousOrder) {
       if (previousOrder.idempotencyFingerprint !== fingerprint) {
         return NextResponse.json({ error: "This checkout key was already used with different order details. Please retry checkout." }, { status: 409 });
       }
-      return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id), paymentMethod: previousOrder.paymentMethod ?? "cod" }, { status: 200 });
+      return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id), paymentMethod: previousOrder.paymentMethod ?? "cod", paymentCompleted: previousOrder.paymentStatus === "paid" }, { status: 200 });
     }
 
     const limited = await enforceUserRateLimit("checkout", customerId, 8, 15 * 60 * 1000);
@@ -202,9 +201,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Order placed successfully.", orderId: createdOrderId, paymentMethod: parsed.data.paymentMethod }, { status: 201 });
   } catch (error) {
     if (isDuplicateKeyError(error) && customerId && idempotencyKey) {
-      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint paymentMethod").lean().catch(() => null) as unknown as { _id: unknown; idempotencyFingerprint?: string; paymentMethod?: string } | null;
+      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint paymentMethod paymentStatus").lean().catch(() => null) as unknown as { _id: unknown; idempotencyFingerprint?: string; paymentMethod?: string; paymentStatus?: string } | null;
       if (existing && existing.idempotencyFingerprint === requestFingerprint) {
-        return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id), paymentMethod: existing.paymentMethod ?? "cod" }, { status: 200 });
+        return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id), paymentMethod: existing.paymentMethod ?? "cod", paymentCompleted: existing.paymentStatus === "paid" }, { status: 200 });
       }
     }
     if (isDuplicateKeyError(error) && customerId && couponCode) {
