@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { auth } from "@/../auth";
+import { auth } from "../../../../../../auth";
 import { connectDatabase } from "@/lib/db";
 import { enforceUserRateLimit } from "@/lib/api-rate-limit";
 import { getPaymentAppUrl, initiateSslCommerzSession, isSslCommerzConfigured } from "@/lib/payments/sslcommerz";
@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: "Please sign in before paying." }, { status: 401 });
     if (session.user.role !== "customer") return NextResponse.json({ error: "Customer accounts only." }, { status: 403 });
     customerId = session.user.id;
+    if (!session.user.email) return NextResponse.json({ error: "A verified email address is required for online payment." }, { status: 422 });
 
     const body: unknown = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
         amount: order.total,
         customer: {
           name: order.shipping.name,
-          email: session.user.email || "customer@lovesone.com",
+          email: session.user.email,
           phone: order.shipping.phone,
           address: order.shipping.address,
           city: order.shipping.city
