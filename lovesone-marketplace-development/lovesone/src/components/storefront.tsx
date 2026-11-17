@@ -91,6 +91,7 @@ export function CheckoutForm({onlinePaymentEnabled=false}:{onlinePaymentEnabled?
    if(data.paymentMethod==="sslcommerz"){
     const paymentResponse=await fetch("/api/payments/sslcommerz/initiate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:data.orderId})});
     const paymentData=await paymentResponse.json();if(!paymentResponse.ok)throw new Error(paymentData.error||"Could not start online payment.");
+    if(paymentData.paymentCompleted){router.push(`/order/success?orderId=${encodeURIComponent(paymentData.orderId)}`);router.refresh();return;}
     window.location.assign(paymentData.gatewayUrl);return;
    }
    clear();router.push(`/order/success?orderId=${encodeURIComponent(data.orderId)}`);router.refresh();
