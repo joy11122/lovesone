@@ -26,7 +26,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ s
       { _id: settlementId, status: "pending" },
       { $set: { status: "paid", payoutReference: parsed.data.payoutReference, paidBy: session.user.id, paidAt: new Date() } },
       { new: true, runValidators: true }
-    ).lean();
+    ).lean() as unknown as { _id: unknown; status: string; payoutReference?: string | null; netAmount: number } | null;
     if (!settlement) {
       const exists = await VendorSettlement.exists({ _id: settlementId });
       return NextResponse.json({ error: exists ? "This settlement has already been paid or changed." : "Settlement not found." }, { status: exists ? 409 : 404 });
