@@ -16,6 +16,6 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL(`/account?payment=${status}`, getPaymentAppUrl()), 303);
   } catch (error) {
     console.error("SSLCommerz fail callback reconciliation failed", error);
-    return NextResponse.redirect(new URL("/account?payment=pending", getPaymentAppUrl()), 303;
+    return NextResponse.redirect(new URL("/account?payment=pending", getPaymentAppUrl()), 303);
   }
 }
