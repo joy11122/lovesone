@@ -51,6 +51,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
       const subOrder = subOrders.find((item) => String(item.vendorId) === session.user.id);
       if (!subOrder) throw new Error("ORDER_NOT_FOUND");
 
+      if (order.paymentMethod !== "cod" && order.paymentStatus !== "paid") throw new Error("PAYMENT_REQUIRED");
+
       const nextStatus = parsed.data.status as VendorOrderStatus;
       if (!canTransitionVendorOrder(subOrder.status, nextStatus)) throw new Error("INVALID_ORDER_TRANSITION");
       if (nextStatus === "cancelled" && !canVendorCancelOrder(order.paymentStatus)) {
@@ -103,6 +105,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
     }
     if (error instanceof Error && error.message === "INVALID_ORDER_TRANSITION") {
       return NextResponse.json({ error: "This order cannot move to that status." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "PAYMENT_REQUIRED") {
+      return NextResponse.json({ error: "Online payment must be verified before the seller can process this order." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "PAID_ORDER_CANCELLATION_BLOCKED") {
       return NextResponse.json({ error: "Paid or authorized orders cannot be cancelled until a verified refund workflow is available." }, { status: 409 });
