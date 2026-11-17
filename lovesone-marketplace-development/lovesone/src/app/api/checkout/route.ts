@@ -8,6 +8,9 @@ import { connectDatabase } from "@/lib/db";
 import { reserveProductStock } from "@/lib/inventory";
 import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
+import { Coupon } from "@/models/Coupon";
+import { CouponRedemption } from "@/models/CouponRedemption";
+import { findUsableCoupon, calculateCouponDiscount } from "@/lib/coupons";
 
 const schema = z.object({
   idempotencyKey: z.string().uuid(),
@@ -22,6 +25,7 @@ const schema = z.object({
     address: z.string().trim().min(8).max(500),
     city: z.string().trim().min(2).max(80)
   }),
+  couponCode: z.string().trim().toUpperCase().min(3).max(40).optional(),
   paymentMethod: z.literal("cod")
 });
 
@@ -58,7 +62,8 @@ export async function POST(request: NextRequest) {
 
     const fingerprint = createHash("sha256").update(JSON.stringify({
       items: [...quantities.values()].sort((a, b) => a.productId.localeCompare(b.productId) || (a.variantId ?? "").localeCompare(b.variantId ?? "")),
-      shipping: parsed.data.shipping
+      shipping: parsed.data.shipping,
+      couponCode: parsed.data.couponCode ?? ""
     })).digest("hex");
     requestFingerprint = fingerprint;
 
@@ -131,14 +136,40 @@ export async function POST(request: NextRequest) {
         grouped.set(vendorId, group);
       }
 
+      let discountAmount = 0;
+      let appliedCoupon: { _id: unknown; code: string } | null = null;
+      if (parsed.data.couponCode) {
+        const coupon = await findUsableCoupon(parsed.data.couponCode, customerId, total, transactionSession);
+        discountAmount = calculateCouponDiscount(coupon, total);
+        const couponFilter: Record<string, unknown> = { _id: coupon._id, active: true };
+        if (coupon.usageLimit !== null && coupon.usageLimit !== undefined) couponFilter.usageCount = { $lt: coupon.usageLimit };
+        const reservedCoupon = await Coupon.findOneAndUpdate(couponFilter, { $inc: { usageCount: 1 } }, { new: true, session: transactionSession }).select("_id code");
+        if (!reservedCoupon) throw new Error("COUPON_LIMIT");
+        appliedCoupon = { _id: reservedCoupon._id, code: reservedCoupon.code };
+
+        const orderLines = [...grouped.values()].flatMap(group => group.items);
+        let remainingDiscount = discountAmount;
+        orderLines.forEach((line, index) => {
+          const share = index === orderLines.length - 1
+            ? remainingDiscount
+            : Math.min(remainingDiscount, line.lineTotal, Math.round((line.lineTotal / total) * discountAmount * 100) / 100);
+          line.originalLineTotal = line.lineTotal;
+          line.discountAmount = share;
+          line.lineTotal = Math.round((line.lineTotal - share) * 100) / 100;
+          remainingDiscount = Math.round((remainingDiscount - share) * 100) / 100;
+        });
+      }
+
       const created = await Order.create([{
         orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
         customerId,
         idempotencyKey,
         idempotencyFingerprint: fingerprint,
         subOrders: [...grouped.values()].map((group) => ({ ...group, status: "pending" })),
-        total: Math.round(total * 100) / 100,
+        total: Math.round((total - discountAmount) * 100) / 100,
         originalTotal: Math.round(total * 100) / 100,
+        discountTotal: discountAmount,
+        ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
         cancelledTotal: 0,
         shipping: parsed.data.shipping,
         paymentMethod: "cod",
@@ -148,6 +179,7 @@ export async function POST(request: NextRequest) {
       const order = Array.isArray(created) ? created[0] : created;
 
       createdOrderId = String(order._id);
+      if (appliedCoupon) await CouponRedemption.create([{ couponId: appliedCoupon._id, userId: customerId, orderId: order._id, discountAmount }], { session: transactionSession });
     });
 
     return NextResponse.json({ message: "Order placed successfully.", orderId: createdOrderId }, { status: 201 });
@@ -157,6 +189,16 @@ export async function POST(request: NextRequest) {
       if (existing && existing.idempotencyFingerprint === requestFingerprint) {
         return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id) }, { status: 200 });
       }
+    }
+    if (error instanceof Error && error.message.startsWith("COUPON_")) {
+      const couponMessages: Record<string, string> = {
+        COUPON_INVALID: "This coupon code is invalid or inactive.",
+        COUPON_EXPIRED: "This coupon is not currently valid.",
+        COUPON_MINIMUM: "Your order does not meet this coupon's minimum amount.",
+        COUPON_LIMIT: "This coupon has reached its usage limit.",
+        COUPON_ALREADY_USED: "You have already used this coupon."
+      };
+      return NextResponse.json({ error: couponMessages[error.message] ?? "This coupon cannot be applied." }, { status: 422 });
     }
     if (error instanceof Error && error.message === "PRODUCT_UNAVAILABLE") {
       return NextResponse.json({ error: "One or more products are no longer available. Please refresh your bag." }, { status: 409 });
