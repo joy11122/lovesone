@@ -21,7 +21,7 @@ The checkout UI exposes online payment only when the store ID, password and vali
 3. The authenticated customer starts a payment attempt. The server locks the order to one active transaction ID and creates a hosted SSLCommerz session.
 4. The browser is redirected only to an HTTPS gateway URL on an SSLCommerz host allowlist.
 5. The success callback and IPN both call the SSLCommerz validation API from the server. The application checks final provider status, transaction ID, exact amount (to two decimal places) and BDT currency. Failure/cancel redirects and stale attempts are reconciled using the provider transaction-query API; browser-supplied status is never trusted.
-6. The payment transaction and order are marked paid together in a MongoDB transaction. Repeated callbacks are idempotent. Browser redirects alone never mark an order paid.
+6. The payment transaction and order are marked paid together in a MongoDB transaction. Repeated callbacks are idempotent. Browser redirects alone never mark an order paid. Provider risk level 1 moves both records into a review state; seller fulfilment remains blocked until an administrator manually verifies the transaction in the LOVESONE admin dashboard and approves it. The approval records the reviewing administrator and timestamp.
 7. Vendors cannot process non-COD orders until payment is verified. Customers cannot cancel an order while a payment attempt is active.
 
 ## Unpaid order expiry
