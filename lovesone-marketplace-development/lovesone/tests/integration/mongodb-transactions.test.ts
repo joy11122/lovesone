@@ -247,6 +247,54 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
     expect((savedOrder?.subOrders as Array<{ status: string }>)[0].status).toBe("cancelled");
   });
 
+  it("prevents concurrent refund requests from reserving more than the captured amount", async () => {
+    const customerId = new mongoose.Types.ObjectId();
+    const order = await Order.create({
+      orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
+      customerId,
+      subOrders: [],
+      total: 100,
+      refundedAmount: 0,
+      refundReservedAmount: 0,
+      shipping: { name: "Test Customer", phone: "01712345678", address: "123 Test Street", city: "Khulna" },
+      paymentMethod: "cod",
+      paymentStatus: "paid",
+      status: "delivered",
+      returnRequest: { status: "approved", reason: "Test return" }
+    });
+    testOrderIds.push(order._id);
+
+    const reserveRefund = async () => {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          const reserved = await Order.findOneAndUpdate(
+            {
+              _id: order._id,
+              $expr: {
+                $lte: [
+                  { $add: [{ $ifNull: ["$refundedAmount", 0] }, { $ifNull: ["$refundReservedAmount", 0] }, 70] },
+                  100
+                ]
+              }
+            },
+            { $inc: { refundReservedAmount: 70 } },
+            { new: true, session }
+          );
+          if (!reserved) throw new Error("REFUND_LIMIT_EXCEEDED");
+        });
+        return "reserved";
+      } finally {
+        await session.endSession();
+      }
+    };
+
+    const attempts = await Promise.allSettled([reserveRefund(), reserveRefund()]);
+    expect(attempts.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(await Order.findById(order._id).select("refundedAmount refundReservedAmount").lean())
+      .toMatchObject({ refundedAmount: 0, refundReservedAmount: 70 });
+  });
+
   it("commits writes made inside a transaction", async () => {
     if (!collection) throw new Error("Test collection is not initialized");
     const session = await mongoose.startSession();
