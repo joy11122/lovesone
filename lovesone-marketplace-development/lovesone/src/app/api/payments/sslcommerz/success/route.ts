@@ -12,6 +12,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(new URL(`/order/success?orderId=${encodeURIComponent(completion.orderId)}`, getPaymentAppUrl()), 303);
   } catch (error) {
     console.error("SSLCommerz success callback rejected", error);
-    return NextResponse.redirect(new URL("/checkout?payment=verification-failed", getPaymentAppUrl()), 303);
+    return NextResponse.redirect(new URL("/account?payment=pending", getPaymentAppUrl()), 303);
   }
 }
