@@ -12,7 +12,11 @@ const transitions: Record<PaymentStatus, PaymentStatus[]> = {
   refunded: []
 };
 
-export function isValidSslCommerzAmount(amount: number): boolean {\n  return Number.isFinite(amount) && amount >= 10 && amount <= 500000;\n}\n\nexport function canTransitionPaymentStatus(current: string, next: PaymentStatus): boolean {
+export function isValidSslCommerzAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount >= 10 && amount <= 500000;
+}
+
+export function canTransitionPaymentStatus(current: string, next: PaymentStatus): boolean {
   return (transitions[current as PaymentStatus] ?? []).includes(next);
 }
 
