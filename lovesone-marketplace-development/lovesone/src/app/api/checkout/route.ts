@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Please check your delivery details and cart." }, { status: 400 });
 
+    if (parsed.data.paymentMethod === "sslcommerz" && !session.user.email) {
+      return NextResponse.json({ error: "A verified email address is required for online payment." }, { status: 422 });
+    }
     if (parsed.data.paymentMethod === "sslcommerz" && !isSslCommerzConfigured()) {
       return NextResponse.json({ error: "Online payment is not configured yet. Please choose cash on delivery." }, { status: 503 });
     }
@@ -168,15 +171,20 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      const payableTotal = Math.round((total - discountAmount) * 100) / 100;
+      if (parsed.data.paymentMethod === "sslcommerz" && (payableTotal < 10 || payableTotal > 500000)) {
+        throw new Error("PAYMENT_AMOUNT_OUT_OF_RANGE");
+      }
+
       const created = await Order.create([{
-        orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
+        orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`;
         customerId,
         idempotencyKey,
         idempotencyFingerprint: fingerprint,
         subOrders: [...grouped.values()].map((group) => ({ ...group, status: "pending" })),
-        total: Math.round((total - discountAmount) * 100) / 100,
+        total: payableTotal,
         subtotal: Math.round(total * 100) / 100,
-        originalTotal: Math.round((total - discountAmount) * 100) / 100,
+        originalTotal: payableTotal,
         discountTotal: discountAmount,
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
         cancelledTotal: 0,
@@ -223,6 +231,9 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof Error && (error.message === "VARIANT_REQUIRED" || error.message === "VARIANT_UNAVAILABLE")) {
       return NextResponse.json({ error: "A selected product option is no longer available. Refresh your bag and try again." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "PAYMENT_AMOUNT_OUT_OF_RANGE") {
+      return NextResponse.json({ error: "SSLCommerz supports order totals from ৳10 to ৳500,000. Please choose cash on delivery for this order." }, { status: 422 });
     }
     if (error instanceof Error && error.message === "PRESCRIPTION_REQUIRED") {
       return NextResponse.json({ error: "Prescription-controlled products cannot be ordered online yet." }, { status: 422 });
