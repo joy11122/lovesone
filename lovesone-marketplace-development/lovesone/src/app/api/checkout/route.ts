@@ -26,7 +26,7 @@ const schema = z.object({
     city: z.string().trim().min(2).max(80)
   }),
   couponCode: z.string().trim().toUpperCase().min(3).max(40).optional(),
-  paymentMethod: z.literal("cod")
+  paymentMethod: z.enum(["cod", "sslcommerz"])
 });
 
 function isDuplicateKeyError(error: unknown): boolean {
@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Please check your delivery details and cart." }, { status: 400 });
 
+    if (parsed.data.paymentMethod === "sslcommerz" && !isSslCommerzConfigured()) {
+      return NextResponse.json({ error: "Online payment is not configured yet. Please choose cash on delivery." }, { status: 503 });
+    }
+
     idempotencyKey = parsed.data.idempotencyKey;
     couponCode = parsed.data.couponCode ?? "";
     const quantities = new Map<string, { productId: string; variantId?: string; quantity: number }>();
@@ -65,17 +69,18 @@ export async function POST(request: NextRequest) {
     const fingerprint = createHash("sha256").update(JSON.stringify({
       items: [...quantities.values()].sort((a, b) => a.productId.localeCompare(b.productId) || (a.variantId ?? "").localeCompare(b.variantId ?? "")),
       shipping: parsed.data.shipping,
-      couponCode: parsed.data.couponCode ?? ""
+      couponCode: parsed.data.couponCode ?? "",
+      paymentMethod: parsed.data.paymentMethod
     })).digest("hex");
     requestFingerprint = fingerprint;
 
     await connectDatabase();
-    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint").lean() as unknown as { _id: unknown; idempotencyFingerprint?: string } | null;
+    const previousOrder = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint paymentMethod").lean() as unknown as { _id: unknown; idempotencyFingerprint?: string; paymentMethod?: string } | null;
     if (previousOrder) {
       if (previousOrder.idempotencyFingerprint !== fingerprint) {
         return NextResponse.json({ error: "This checkout key was already used with different order details. Please retry checkout." }, { status: 409 });
       }
-      return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id) }, { status: 200 });
+      return NextResponse.json({ message: "Order already placed.", orderId: String(previousOrder._id), paymentMethod: previousOrder.paymentMethod ?? "cod" }, { status: 200 });
     }
 
     const limited = await enforceUserRateLimit("checkout", customerId, 8, 15 * 60 * 1000);
@@ -175,7 +180,7 @@ export async function POST(request: NextRequest) {
         ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
         cancelledTotal: 0,
         shipping: parsed.data.shipping,
-        paymentMethod: "cod",
+        paymentMethod: parsed.data.paymentMethod,
         paymentStatus: "pending",
         status: "pending"
       }], { session: transactionSession });
@@ -185,12 +190,12 @@ export async function POST(request: NextRequest) {
       if (appliedCoupon) await CouponRedemption.create([{ couponId: appliedCoupon._id, userId: customerId, orderId: order._id, discountAmount }], { session: transactionSession });
     });
 
-    return NextResponse.json({ message: "Order placed successfully.", orderId: createdOrderId }, { status: 201 });
+    return NextResponse.json({ message: "Order placed successfully.", orderId: createdOrderId, paymentMethod: parsed.data.paymentMethod }, { status: 201 });
   } catch (error) {
     if (isDuplicateKeyError(error) && customerId && idempotencyKey) {
-      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint").lean().catch(() => null) as unknown as { _id: unknown; idempotencyFingerprint?: string } | null;
+      const existing = await Order.findOne({ customerId, idempotencyKey }).select("_id idempotencyFingerprint paymentMethod").lean().catch(() => null) as unknown as { _id: unknown; idempotencyFingerprint?: string; paymentMethod?: string } | null;
       if (existing && existing.idempotencyFingerprint === requestFingerprint) {
-        return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id) }, { status: 200 });
+        return NextResponse.json({ message: "Order already placed.", orderId: String(existing._id), paymentMethod: existing.paymentMethod ?? "cod" }, { status: 200 });
       }
     }
     if (isDuplicateKeyError(error) && customerId && couponCode) {
