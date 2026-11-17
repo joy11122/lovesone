@@ -57,7 +57,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     ));
     if (!eligibleOrder) return NextResponse.json({ error: "You can review this product after an order containing it has been delivered." }, { status: 403 });
 
-    const existing = await Review.findOne({ productId, customerId: session.user.id, orderId: eligibleOrder._id }).select("_id");
+    const existing = await Review.findOne({ productId, customerId: session.user.id }).select("_id");
     if (existing) return NextResponse.json({ error: "You have already reviewed this product for that order." }, { status: 409 });
     const review = await Review.create({ productId, customerId: session.user.id, orderId: eligibleOrder._id, ...parsed.data });
     return NextResponse.json({ message: "Thank you for sharing your experience.", reviewId: String(review._id) }, { status: 201 });
