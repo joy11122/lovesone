@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
       if (parsed.data.couponCode) {
         const coupon = await findUsableCoupon(parsed.data.couponCode, customerId, total, transactionSession);
         discountAmount = calculateCouponDiscount(coupon, total);
-        const couponFilter: Record<string, unknown> = { _id: coupon._id, active: true };
+        const couponFilter: Record<string, unknown> = { _id: coupon._id, active: true, startsAt: { $lte: new Date() }, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] };
         if (coupon.usageLimit !== null && coupon.usageLimit !== undefined) couponFilter.usageCount = { $lt: coupon.usageLimit };
         const reservedCoupon = await Coupon.findOneAndUpdate(couponFilter, { $inc: { usageCount: 1 } }, { new: true, session: transactionSession }).select("_id code");
         if (!reservedCoupon) throw new Error("COUPON_LIMIT");
