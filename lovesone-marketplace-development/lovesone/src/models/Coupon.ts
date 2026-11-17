@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const CouponSchema = new Schema({
-  code: { type: String, required: true, trim: true, uppercase: true, unique: true, maxlength: 40, index: true },
+  code: { type: String, required: true, trim: true, uppercase: true, unique: true, maxlength: 40 },
   description: { type: String, trim: true, maxlength: 200, default: "" },
   discountType: { type: String, enum: ["percentage", "fixed"], required: true },
   discountValue: { type: Number, required: true, min: 0.01 },
