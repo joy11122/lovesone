@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: "Please sign in before paying." }, { status: 401 });
     if (session.user.role !== "customer") return NextResponse.json({ error: "Customer accounts only." }, { status: 403 });
     customerId = session.user.id;
-    if (!session.user.email) return NextResponse.json({ error: "A verified email address is required for online payment." }, { status: 422 });
+    if (!session.user.email) return NextResponse.json({ error: "An email address is required for online payment." }, { status: 422 });
 
     const body: unknown = await request.json().catch(() => null);
     const parsed = schema.safeParse(body);
