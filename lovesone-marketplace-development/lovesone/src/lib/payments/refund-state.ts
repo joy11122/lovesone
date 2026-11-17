@@ -36,7 +36,7 @@ export function canTransitionRefundStatus(current: RefundStatus, next: RefundSta
     requested: ["approved", "rejected"],
     approved: ["processing", "paid"],
     rejected: [],
-    processing: ["paid"],
+    processing: ["paid", "rejected"],
     paid: []
   };
   return transitions[current].includes(next);
