@@ -7,6 +7,7 @@ const OrderSchema = new Schema({
   idempotencyFingerprint: { type: String, default: undefined },
   subOrders: { type: [Schema.Types.Mixed], default: [] },
   total: { type: Number, required: true, min: 0 },
+  subtotal: { type: Number, min: 0, default: undefined },
   discountTotal: { type: Number, min: 0, default: 0 },
   couponCode: { type: String, trim: true, uppercase: true, default: null },
   originalTotal: { type: Number, min: 0, default: undefined },
