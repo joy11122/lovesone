@@ -295,6 +295,35 @@ describe.skipIf(!runIntegrationTests)("MongoDB replica-set transactions", () => 
       .toMatchObject({ refundedAmount: 0, refundReservedAmount: 70 });
   });
 
+
+  it("blocks new refund reservations after a vendor settlement locks an order", async () => {
+    const customerId = new mongoose.Types.ObjectId();
+    const order = await Order.create({
+      orderNumber: `LVS-${randomUUID().slice(0, 8).toUpperCase()}`,
+      customerId,
+      subOrders: [],
+      total: 100,
+      refundedAmount: 0,
+      refundReservedAmount: 0,
+      settlementLockedAt: new Date(),
+      shipping: { name: "Test Customer", phone: "01712345678", address: "123 Test Street", city: "Khulna" },
+      paymentMethod: "cod",
+      paymentStatus: "paid",
+      status: "delivered",
+      returnRequest: { status: "approved", reason: "Test return" }
+    });
+    testOrderIds.push(order._id);
+
+    const reservation = await Order.findOneAndUpdate(
+      { _id: order._id, settlementLockedAt: null },
+      { $inc: { refundReservedAmount: 25 } },
+      { new: true }
+    );
+    expect(reservation).toBeNull();
+    expect(await Order.findById(order._id).select("refundReservedAmount").lean())
+      .toMatchObject({ refundReservedAmount: 0 });
+  });
+
   it("commits writes made inside a transaction", async () => {
     if (!collection) throw new Error("Test collection is not initialized");
     const session = await mongoose.startSession();
