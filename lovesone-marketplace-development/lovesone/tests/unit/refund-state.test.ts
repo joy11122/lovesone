@@ -33,6 +33,7 @@ describe("refund workflow transitions", () => {
     expect(canTransitionRefundStatus("approved", "processing")).toBe(true);
     expect(canTransitionRefundStatus("processing", "paid")).toBe(true);
     expect(canTransitionRefundStatus("paid", "paid")).toBe(false);
+    expect(canTransitionRefundStatus("processing", "rejected")).toBe(true);
     expect(canTransitionRefundStatus("rejected", "approved")).toBe(false);
   });
 });
